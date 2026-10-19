@@ -1,0 +1,141 @@
+{
+  "id": "concussion-football",
+  "title": "Concussion in Football",
+  "subtitle": "Recognise, remove and return safely",
+  "category": "sports-medicine",
+  "audience": "Players, coaches, parents and medical staff",
+  "presenter": {
+    "name": "Dr. Sam",
+    "role": "Sport and exercise medicine physician"
+  },
+  "disclaimer": "Educational content only. Not medical advice. Any player with a suspected concussion should be assessed by a healthcare professional.",
+  "slides": [
+    {
+      "index": 0,
+      "title": "What a concussion is",
+      "kicker": "The basics",
+      "bullets": [
+        "A brain injury caused by a blow to the head, neck or body",
+        "Loss of consciousness is not required",
+        "Standard CT or MRI scans are usually normal",
+        "Symptoms can appear minutes to hours later"
+      ],
+      "stat": null,
+      "speakerNotes": "A concussion is a brain injury. It happens when a blow to the head, face, neck or even the body causes the brain to move rapidly inside the skull, disturbing how it works. Most players are never knocked out, so waiting for a loss of consciousness means missing most concussions. Routine scans are usually normal, because concussion is a problem of function rather than structure. Symptoms can also be delayed, appearing minutes or even hours after the impact. That is why the first rule of concussion is simple awareness on the touchline.",
+      "keywords": [
+        "concussion",
+        "definition",
+        "brain injury",
+        "knocked out",
+        "unconscious",
+        "scan",
+        "symptoms"
+      ]
+    },
+    {
+      "index": 1,
+      "title": "Recognise and remove",
+      "kicker": "On the pitch",
+      "bullets": [
+        "Signs: lying motionless, unsteady, blank look, confusion",
+        "Symptoms: headache, dizziness, nausea, blurred vision",
+        "If in doubt, sit them out: no same-day return",
+        "Red flags such as neck pain or vomiting need emergency care"
+      ],
+      "stat": null,
+      "speakerNotes": "Anyone on the touchline can save a player's brain. Watch for a player lying still after contact, getting up slowly, stumbling, clutching their head, or looking blank and confused. Players may report headache, dizziness, nausea, blurred vision or feeling foggy. If a concussion is suspected, the player is removed from play and does not return that day, even if they feel fine. If in doubt, sit them out. Some signs are emergencies, including neck pain, repeated vomiting, seizures, worsening headache or increasing confusion, and they need immediate hospital care.",
+      "keywords": [
+        "recognise",
+        "signs",
+        "symptoms",
+        "remove",
+        "sideline",
+        "if in doubt",
+        "red flags",
+        "emergency"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Permanent concussion substitutes",
+      "kicker": "The laws of the game",
+      "bullets": [
+        "IFAB trial from 2021, part of the Laws since 2024",
+        "Extra permanent substitute for a suspected concussion",
+        "Opponents receive the same number of extra substitutions",
+        "Removes pressure to keep an injured player on"
+      ],
+      "stat": null,
+      "speakerNotes": "The rules of football have changed to support safer decisions. The International Football Association Board began trialling additional permanent concussion substitutes in twenty twenty one, and wrote them into the Laws of the Game in twenty twenty four. If a player is suspected of having a concussion, the team can replace them without using one of its normal substitutions, and the opponents receive the same number of extra changes, so there is no tactical penalty. The player cannot come back on. This matters because it removes the pressure on medical staff and coaches to keep a key player on the pitch after a head knock.",
+      "keywords": [
+        "IFAB",
+        "substitutes",
+        "concussion substitute",
+        "laws",
+        "rules",
+        "permanent",
+        "match"
+      ]
+    },
+    {
+      "index": 3,
+      "title": "Graduated return to sport",
+      "kicker": "Return to play",
+      "bullets": [
+        "Relative rest for 24–48 hours, then light activity",
+        "Six steps, each at least 24 hours, from daily life to matches",
+        "Early steps: a mild, brief symptom rise is acceptable",
+        "Medical clearance before any full-contact training"
+      ],
+      "stat": {
+        "value": "6 steps",
+        "label": "in the graduated return-to-sport strategy"
+      },
+      "speakerNotes": "Recovery starts with a day or two of relative rest, but strict bed rest is no longer advised. Return to sport then follows six steps: daily activity, light aerobic exercise, individual football drills, non contact team training, full contact practice after medical clearance, and finally matches. Each step takes at least a day. In the first three steps, a mild symptom increase that settles within an hour is acceptable. A bigger flare means stopping and trying again the next day. The later steps should be completely symptom free. Most adults recover within about a month.",
+      "keywords": [
+        "return to play",
+        "return to sport",
+        "steps",
+        "protocol",
+        "rest",
+        "recovery",
+        "how long",
+        "clearance"
+      ]
+    },
+    {
+      "index": 4,
+      "title": "Heading and long-term brain health",
+      "kicker": "Long-term risk",
+      "bullets": [
+        "Former pro footballers: ~3.5x neurodegenerative disease mortality",
+        "Risk highest in defenders and longer careers",
+        "England: heading phased out of under-11 and younger matches",
+        "Adults: limit higher-force headers in training"
+      ],
+      "stat": {
+        "value": "~3.5x",
+        "label": "neurodegenerative disease mortality in former Scottish pros"
+      },
+      "speakerNotes": "Concussion is not the only concern. A large Scottish study found that former professional footballers were around three and a half times more likely to die with a neurodegenerative disease such as dementia than people from the general population. A follow up study showed the risk was highest for defenders and for those with longer careers. This does not prove heading is the cause, but it has changed practice. In England, heading has been removed from training for primary school children, deliberate heading is being phased out of matches for under elevens and younger, and adult players are advised to limit higher force headers in training.",
+      "keywords": [
+        "heading",
+        "dementia",
+        "long-term",
+        "brain health",
+        "defenders",
+        "youth",
+        "children",
+        "neurodegenerative"
+      ]
+    }
+  ],
+  "sources": [
+    "Patricios JS, et al. Consensus statement on concussion in sport: the 6th International Conference on Concussion in Sport, Amsterdam, October 2022. Br J Sports Med. 2023;57:695–711.",
+    "Mackay DF, et al. Neurodegenerative disease mortality among former professional soccer players. N Engl J Med. 2019;381:1801–1808.",
+    "Russell ER, et al. Association of field position and career length with risk of neurodegenerative disease in male former professional soccer players. JAMA Neurol. 2021;78:1057–1063.",
+    "The FA, Premier League, EFL, PFA and LMA. Updated heading guidance for English football, 28 July 2021 (professional: max 10 higher-force headers per training week; amateur: max 10 headers in one session per week).",
+    "The FA. New heading rules for youth football, 17 May 2024: deliberate heading removed from U7–U9 grassroots matches in 2024/25, U10 in 2025/26 and U11 in 2026/27 (indirect free-kick sanction).",
+    "IFAB. Additional permanent concussion substitutes protocol (trial 2021; Laws of the Game, Law 3, 2024/25)."
+  ]
+}

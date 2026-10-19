@@ -1,0 +1,170 @@
+{
+  "id": "tenvoryx-hypertension",
+  "title": "Tenvoryx (aldoquorin) in Resistant Hypertension",
+  "subtitle": "A fictional drug for demonstration only: scientific exchange briefing",
+  "category": "hcp-engagement",
+  "audience": "Physicians treating hypertension",
+  "presenter": {
+    "name": "Nova",
+    "role": "AI medical science liaison"
+  },
+  "disclaimer": "Fictional product. Tenvoryx (aldoquorin) and the ALDERA trial are invented for this demonstration. All product data are fictitious and must not be used for clinical decisions.",
+  "slides": [
+    {
+      "index": 0,
+      "title": "The unmet need",
+      "kicker": "Disease background",
+      "bullets": [
+        "About 1 in 5 treated US adults have resistant hypertension",
+        "Excess aldosterone drives sodium retention and organ damage",
+        "Mineralocorticoid antagonists are underused and often poorly tolerated",
+        "Each 10 mmHg systolic reduction lowers major CV events ~20%"
+      ],
+      "stat": {
+        "value": "~1 in 5",
+        "label": "treated US adults with resistant hypertension (2018 AHA definition)"
+      },
+      "speakerNotes": "Thank you for making time today. Please note that Tenvoryx is a fictional medicine created for this demonstration. The clinical problem, however, is real. Resistant hypertension means blood pressure stays above goal despite three medicines including a diuretic, or needs four or more to reach goal. Under the current American Heart Association definition, about one in five treated adults in the United States meet it. Excess aldosterone is a key driver, promoting sodium retention, vascular stiffness and organ damage. Every fall of ten millimetres of mercury in systolic pressure lowers major cardiovascular events by about a fifth.",
+      "keywords": [
+        "unmet need",
+        "resistant hypertension",
+        "aldosterone",
+        "background",
+        "epidemiology",
+        "uncontrolled",
+        "cardiovascular risk"
+      ]
+    },
+    {
+      "index": 1,
+      "title": "Mechanism of action",
+      "kicker": "How it works",
+      "bullets": [
+        "Selective aldosterone synthase (CYP11B2) inhibitor",
+        "Over 200-fold selectivity versus cortisol synthesis (CYP11B1)",
+        "Lowers aldosterone production at its source",
+        "Half-life ~18 hours supports once-daily oral dosing"
+      ],
+      "stat": {
+        "value": ">200x",
+        "label": "selectivity for aldosterone over cortisol synthesis"
+      },
+      "speakerNotes": "Aldoquorin, the active ingredient in Tenvoryx, is an oral, selective inhibitor of aldosterone synthase, the adrenal enzyme that makes aldosterone. Rather than blocking the receptor, as mineralocorticoid antagonists do, it reduces aldosterone production at the source. It is more than two hundred times more selective for aldosterone synthase than for the closely related enzyme that makes cortisol, so the stress hormone response is preserved. Its half-life of around eighteen hours supports simple once daily dosing. Again, these product properties are fictional and are used here only to illustrate a scientific exchange.",
+      "keywords": [
+        "mechanism",
+        "MoA",
+        "aldosterone synthase",
+        "CYP11B2",
+        "selectivity",
+        "cortisol",
+        "pharmacology",
+        "half-life"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Efficacy: the ALDERA phase 3 trial",
+      "kicker": "Clinical data",
+      "bullets": [
+        "1,080 adults uncontrolled on 3+ agents including a diuretic",
+        "Placebo-adjusted systolic BP at week 16: up to −7.6 mmHg",
+        "Systolic BP <130 mmHg: 34% (10 mg) vs 16% placebo",
+        "Effect consistent across age, sex, race and kidney function"
+      ],
+      "stat": {
+        "value": "−7.6 mmHg",
+        "label": "placebo-adjusted systolic BP at week 16 (10 mg)"
+      },
+      "speakerNotes": "The fictional Aldera phase three trial randomised one thousand and eighty adults with resistant hypertension, meaning their blood pressure was uncontrolled on three or more medicines, including a diuretic. At week sixteen, seated systolic pressure fell by five point nine millimetres of mercury more than placebo with the five milligram dose, and by seven point six millimetres of mercury with the ten milligram dose. Thirty four percent of patients on ten milligrams reached a systolic pressure below one hundred and thirty, compared with sixteen percent on placebo. Results were consistent across age, sex, race and baseline kidney function.",
+      "keywords": [
+        "efficacy",
+        "trial",
+        "Aldera",
+        "phase 3",
+        "results",
+        "blood pressure reduction",
+        "systolic",
+        "control rate"
+      ]
+    },
+    {
+      "index": 3,
+      "title": "Safety and tolerability",
+      "kicker": "Safety",
+      "bullets": [
+        "Potassium above 5.5 mmol/L: 7.2% (10 mg) vs 2.1% placebo",
+        "Above 6.0 mmol/L: 1.5% vs 0.3%, mostly in first 6 weeks",
+        "Discontinuation for adverse events: 4.0% vs 2.5%",
+        "No cases of adrenal insufficiency"
+      ],
+      "stat": {
+        "value": "7.2%",
+        "label": "potassium above 5.5 mmol/L with 10 mg (2.1% placebo)"
+      },
+      "speakerNotes": "Turning to safety, which is always where I would like to spend real time with you. As expected for this mechanism, the main finding was a rise in potassium. In the fictional Aldera trial, potassium above five point five millimoles per litre occurred in seven point two percent of patients on ten milligrams, versus two point one percent on placebo. Levels above six millimoles per litre were uncommon, at one point five percent versus zero point three percent, and most rises occurred within the first six weeks. Discontinuations due to adverse events were four percent versus two point five percent. There were no cases of adrenal insufficiency.",
+      "keywords": [
+        "safety",
+        "side effects",
+        "adverse events",
+        "hyperkalaemia",
+        "potassium",
+        "tolerability",
+        "discontinuation",
+        "cortisol"
+      ]
+    },
+    {
+      "index": 4,
+      "title": "Dosing and monitoring",
+      "kicker": "Dosing",
+      "bullets": [
+        "Start 5 mg once daily; increase to 10 mg after 6 weeks if needed",
+        "Check potassium and eGFR at baseline, week 2 and week 6",
+        "Recheck 2 weeks after any dose increase",
+        "Avoid potassium supplements and mineralocorticoid antagonists"
+      ],
+      "stat": null,
+      "speakerNotes": "In this fictional label, Tenvoryx starts at five milligrams once daily, with or without food, and can be increased to ten milligrams after six weeks if blood pressure remains above target. Potassium and kidney function are checked before starting, at week two and at week six, and again two weeks after any dose increase. It should not be combined with potassium supplements or mineralocorticoid receptor antagonists, and extra care is needed with other medicines that raise potassium. It was not studied in patients with an estimated glomerular filtration rate below thirty.",
+      "keywords": [
+        "dosing",
+        "dose",
+        "titration",
+        "monitoring",
+        "potassium",
+        "eGFR",
+        "kidney",
+        "interactions"
+      ]
+    },
+    {
+      "index": 5,
+      "title": "Trial population and patient selection",
+      "kicker": "Patient selection",
+      "bullets": [
+        "Adults above goal despite 3 or more agents including a diuretic",
+        "Confirm adherence and out-of-office BP; exclude secondary causes",
+        "Baseline potassium ≤5.0 mmol/L and eGFR ≥30",
+        "Not for pregnancy or primary aldosteronism awaiting surgery"
+      ],
+      "stat": null,
+      "speakerNotes": "So what did the trial population look like? Adults whose blood pressure stayed above goal despite at least three medicines, including a diuretic, at tolerated doses. Before escalating, it is worth confirming adherence, checking home or ambulatory readings, and screening for secondary causes, including primary aldosteronism. Trial patients had a baseline potassium of five millimoles per litre or below and an estimated glomerular filtration rate of at least thirty. It is not for use in pregnancy, or in primary aldosteronism awaiting surgery. I am happy to go deeper into any subgroup, or share how the fictional study handled patients with chronic kidney disease.",
+      "keywords": [
+        "patient selection",
+        "who",
+        "eligibility",
+        "indication",
+        "contraindications",
+        "pregnancy",
+        "CKD",
+        "secondary hypertension"
+      ]
+    }
+  ],
+  "sources": [
+    "Carey RM, et al. Resistant hypertension: detection, evaluation, and management. A scientific statement from the American Heart Association. Hypertension. 2018;72:e53–e90.",
+    "Carey RM, et al. Prevalence of apparent treatment-resistant hypertension in the United States: comparison of the 2008 and 2018 American Heart Association scientific statements on resistant hypertension. Hypertension. 2019;73:424–431. (19.7% of treated adults, NHANES 2009–2014.)",
+    "Ettehad D, et al. Blood pressure lowering for prevention of cardiovascular disease and death: a systematic review and meta-analysis. Lancet. 2016;387:957–967.",
+    "Williams B, et al. Spironolactone versus placebo, bisoprolol, and doxazosin to determine the optimal treatment for drug-resistant hypertension (PATHWAY-2). Lancet. 2015;386:2059–2068.",
+    "ALDERA phase 3 trial and all Tenvoryx (aldoquorin) product data: FICTIONAL, created for this demonstration."
+  ]
+}
