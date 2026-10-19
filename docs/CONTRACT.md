@@ -7,11 +7,11 @@ Both sides MUST conform to this document. Any change here is made on `main` firs
 
 | Process | Command (from its folder) | Port |
 |---|---|---|
-| FastAPI (REST) | `uv run synthio-api` | 8000 |
+| FastAPI (REST) | `uv run synthio-api` | 8500 (`API_PORT`) |
 | LiveKit agent worker | `uv run synthio-agent dev` | — (connects out to LiveKit Cloud) |
 | Next.js | `npm run dev` | 3000 |
 
-Frontend reads the API base URL from `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
+Frontend reads the API base URL from `NEXT_PUBLIC_API_URL` (default `http://localhost:8500`). Port 8000 is avoided because Windows/Hyper-V commonly reserves it.
 Backend allows CORS from `FRONTEND_ORIGINS` (comma-separated, default `http://localhost:3000`).
 
 ## 2. Environment variables
@@ -23,6 +23,8 @@ Backend allows CORS from `FRONTEND_ORIGINS` (comma-separated, default `http://lo
 | `LIVEKIT_URL` | yes | — | `wss://<project>.livekit.cloud` |
 | `LIVEKIT_API_KEY` | yes | — | LiveKit Cloud key |
 | `LIVEKIT_API_SECRET` | yes | — | LiveKit Cloud secret |
+| `API_HOST` | no | `127.0.0.1` | API bind host |
+| `API_PORT` | no | `8500` | API bind port |
 | `FRONTEND_ORIGINS` | no | `http://localhost:3000` | CORS allow-list |
 | `AGENT_NAME` | no | `synthio-presenter` | Explicit agent dispatch name |
 | `STT_MODEL` | no | `deepgram/nova-3` | LiveKit Inference STT model id |
