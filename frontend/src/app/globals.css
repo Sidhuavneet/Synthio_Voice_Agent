@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-canvas: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-line: #e3e6ef;
+  --color-line-strong: #cfd4e2;
+  --color-ink: #0b1533;
+  --color-ink-soft: #3b4563;
+  --color-ink-muted: #5d6683;
+  --color-navy: #1e2a78;
+  --color-accent: #4f46e5;
+  --color-accent-light: #a5b4fc;
+  --color-accent-strong: #4338ca;
+  --color-accent-soft: #eef0ff;
+  --color-violet: #7c3aed;
+  --color-danger: #c2283b;
+  --color-danger-soft: #fdeef0;
+  --color-success: #0f8a5f;
+
+  --shadow-card: 0 1px 2px rgb(11 21 51 / 0.04), 0 8px 24px -12px rgb(11 21 51 / 0.12);
+  --shadow-stage: 0 1px 2px rgb(11 21 51 / 0.05), 0 24px 60px -24px rgb(11 21 51 / 0.25);
+
+  --animate-slide-in: slide-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+/* Bars rendered by @livekit/components-react <BarVisualizer>. */
+.lk-audio-bar-visualizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.lk-audio-bar {
+  width: 8px;
+  min-height: 8px;
+  border-radius: 9999px;
+  background-color: var(--color-line-strong);
+  transition:
+    height 120ms ease-out,
+    background-color 250ms linear;
+}
+
+.lk-audio-bar[data-lk-highlighted="true"] {
+  background-color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
