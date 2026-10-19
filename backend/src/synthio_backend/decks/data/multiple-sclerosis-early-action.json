@@ -1,0 +1,162 @@
+{
+  "id": "multiple-sclerosis-early-action",
+  "title": "Multiple Sclerosis: Why Time Matters",
+  "subtitle": "Early recognition, diagnosis and treatment",
+  "category": "neuroimmunology",
+  "audience": "Neurologists, primary care physicians and nurses",
+  "presenter": {
+    "name": "Ava",
+    "role": "AI medical science liaison"
+  },
+  "disclaimer": "Unbranded disease education for healthcare professionals. Not promotional and not medical advice. Treatment decisions should follow local guidelines and product labelling.",
+  "slides": [
+    {
+      "index": 0,
+      "title": "MS at a glance",
+      "kicker": "The burden",
+      "bullets": [
+        "About 2.9 million people live with MS worldwide",
+        "Average age at diagnosis is 32",
+        "Women are affected about twice as often as men",
+        "A leading non-traumatic cause of disability in young adults"
+      ],
+      "stat": {
+        "value": "2.9M",
+        "label": "people living with MS worldwide"
+      },
+      "speakerNotes": "Multiple sclerosis is a chronic immune mediated disease of the central nervous system, in which the immune system attacks myelin and nerve fibres in the brain, spinal cord and optic nerves. Around two point nine million people live with it worldwide. It is usually diagnosed in early adulthood, at an average age of about thirty two, and women are affected roughly twice as often as men. Because it strikes people in their working and family building years, it is one of the leading causes of non traumatic disability in young adults.",
+      "keywords": [
+        "burden",
+        "prevalence",
+        "epidemiology",
+        "how common",
+        "women",
+        "age",
+        "what is MS",
+        "overview"
+      ]
+    },
+    {
+      "index": 1,
+      "title": "Recognising early MS",
+      "kicker": "Early signs",
+      "bullets": [
+        "Optic neuritis: painful, blurred vision in one eye",
+        "Numbness, tingling or weakness in limbs or trunk",
+        "Double vision, vertigo or imbalance",
+        "Symptoms evolving over days and lasting more than 24 hours"
+      ],
+      "stat": null,
+      "speakerNotes": "The first event is often called a clinically isolated syndrome. Classic presentations include optic neuritis, with pain on eye movement and blurred vision in one eye, a partial spinal cord syndrome with numbness, tingling or a band like sensation around the trunk, or brainstem symptoms such as double vision and vertigo. These typically build over hours to days and last more than a day. Fatigue, bladder urgency and heat sensitivity are also common. Prompt referral to neurology for anyone with a suspected first demyelinating event is the single biggest step toward earlier diagnosis.",
+      "keywords": [
+        "symptoms",
+        "early signs",
+        "optic neuritis",
+        "clinically isolated syndrome",
+        "CIS",
+        "referral",
+        "presentation",
+        "primary care"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Making the diagnosis",
+      "kicker": "Diagnosis",
+      "bullets": [
+        "2024 McDonald criteria: optic nerve added as a fifth region",
+        "Dissemination in time no longer always required",
+        "Supportive markers: central vein sign, kappa free light chains",
+        "Exclude mimics: misdiagnosis remains common"
+      ],
+      "stat": null,
+      "speakerNotes": "Diagnosis now follows the twenty twenty four revision of the McDonald criteria. MRI of the brain, spinal cord and optic nerves is central, and the optic nerve is now counted as a fifth typical region. Evidence of lesions at different points in time is no longer always required, so many people can be diagnosed at their first attack. Oligoclonal bands or kappa free light chains in the spinal fluid support the diagnosis, and the central vein sign and paramagnetic rim lesions on MRI help separate MS from its mimics. Excluding those mimics remains essential, because misdiagnosis still happens.",
+      "keywords": [
+        "diagnosis",
+        "McDonald 2024",
+        "MRI",
+        "optic nerve",
+        "oligoclonal bands",
+        "kappa free light chains",
+        "central vein sign",
+        "misdiagnosis"
+      ]
+    },
+    {
+      "index": 3,
+      "title": "The hidden progression",
+      "kicker": "Disease biology",
+      "bullets": [
+        "Damage continues between relapses, often silently",
+        "Most disability worsening occurs independent of relapses (PIRA)",
+        "Brain volume loss starts early in the disease",
+        "Relapse counts alone underestimate disease activity"
+      ],
+      "stat": null,
+      "speakerNotes": "One of the most important shifts in our understanding is that MS is active even when patients feel well. In large analyses of relapsing MS trials, most confirmed disability worsening happened without any preceding relapse. Neurologists call this progression independent of relapse activity. Brain volume loss and silent new MRI lesions can accumulate from the earliest stages. The practical message is that counting relapses alone underestimates disease activity, and that structured monitoring, including regular MRI and careful assessment of subtle changes in walking, hand function and cognition, is essential.",
+      "keywords": [
+        "progression",
+        "PIRA",
+        "silent progression",
+        "smouldering",
+        "atrophy",
+        "brain volume",
+        "disease activity",
+        "relapses"
+      ]
+    },
+    {
+      "index": 4,
+      "title": "Why early treatment matters",
+      "kicker": "Treatment strategy",
+      "bullets": [
+        "Disease-modifying therapies reduce relapses and new lesions",
+        "Injectable, oral and high-efficacy monoclonal antibody options",
+        "Earlier high-efficacy therapy linked to less long-term disability",
+        "Shared decisions balance efficacy, safety and life plans"
+      ],
+      "stat": null,
+      "speakerNotes": "Because damage begins early, the window for protecting the brain is early too. Disease modifying therapies reduce relapses and new MRI lesions, and the options now range from injectable therapies, to oral medicines, to high efficacy monoclonal antibodies. Observational data from large registries suggest that starting a high efficacy therapy within the first two years is associated with less disability years later, compared with starting it later in the disease. The right choice is always individual, weighing efficacy, safety, monitoring needs, comorbidities and plans such as pregnancy.",
+      "keywords": [
+        "treatment",
+        "disease-modifying therapy",
+        "DMT",
+        "early treatment",
+        "high efficacy",
+        "timing",
+        "options",
+        "pregnancy"
+      ]
+    },
+    {
+      "index": 5,
+      "title": "Monitoring and partnership",
+      "kicker": "Long-term care",
+      "bullets": [
+        "Baseline and at least annual MRI on treatment",
+        "Check infections and update vaccines before starting treatment",
+        "Address smoking, vitamin D, exercise and mental health",
+        "Multidisciplinary care and patient support improve adherence"
+      ],
+      "stat": null,
+      "speakerNotes": "Good outcomes depend on what happens after the first prescription. A fresh baseline MRI after starting treatment and at least annual scans help detect silent activity and guide decisions about switching therapy. Before immune therapies, screening for infections such as hepatitis B and updating vaccinations are important. Lifestyle matters too. Stopping smoking, staying active, optimising vitamin D and supporting mental health all contribute. Finally, a multidisciplinary team, including specialist nurses, rehabilitation and patient support programmes, helps people stay on treatment. I am happy to share the underlying publications on any of these points.",
+      "keywords": [
+        "monitoring",
+        "MRI",
+        "vaccination",
+        "infection screening",
+        "lifestyle",
+        "smoking",
+        "adherence",
+        "patient support"
+      ]
+    }
+  ],
+  "sources": [
+    "MS International Federation. Atlas of MS: updated prevalence and incidence data (2023). https://www.msif.org/news/2023/08/21/new-prevalence-and-incidence-data-now-available-in-the-atlas-of-ms/",
+    "Montalban X, et al. Diagnosis of multiple sclerosis: 2024 revisions of the McDonald criteria. Lancet Neurol. 2025;24:850–865.",
+    "Kappos L, et al. Contribution of relapse-independent progression vs relapse-associated worsening to overall confirmed disability accumulation in typical relapsing multiple sclerosis in a pooled analysis of 2 randomized clinical trials. JAMA Neurol. 2020;77:1132–1140.",
+    "He A, et al. Timing of high-efficacy therapy for relapsing-remitting multiple sclerosis: a systematic review and observational cohort study. Lancet Neurol. 2020;19:307–316.",
+    "Giovannoni G, et al. Brain health: time matters in multiple sclerosis. Mult Scler Relat Disord. 2016;9 Suppl 1:S5–S48."
+  ]
+}

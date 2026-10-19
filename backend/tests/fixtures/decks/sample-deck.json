@@ -1,0 +1,101 @@
+{
+  "id": "sample-deck",
+  "title": "Sample Deck",
+  "subtitle": "A fixture for tests",
+  "category": "testing",
+  "audience": "Test runners",
+  "presenter": {
+    "name": "Dr. Test",
+    "role": "Fixture physician"
+  },
+  "disclaimer": "Educational content only. Not medical advice.",
+  "slides": [
+    {
+      "index": 0,
+      "title": "Why it matters",
+      "kicker": "Part 1",
+      "bullets": [
+        "Why it matters point one",
+        "Why it matters point two"
+      ],
+      "stat": {
+        "value": "10%",
+        "label": "sample statistic"
+      },
+      "speakerNotes": "Speaker notes for why it matters.",
+      "keywords": [
+        "why",
+        "kw0"
+      ]
+    },
+    {
+      "index": 1,
+      "title": "How it happens",
+      "kicker": "Part 2",
+      "bullets": [
+        "How it happens point one",
+        "How it happens point two"
+      ],
+      "stat": null,
+      "speakerNotes": "Speaker notes for how it happens.",
+      "keywords": [
+        "how",
+        "kw1"
+      ]
+    },
+    {
+      "index": 2,
+      "title": "Prevention",
+      "kicker": "Part 3",
+      "bullets": [
+        "Prevention point one",
+        "Prevention point two"
+      ],
+      "stat": {
+        "value": "30%",
+        "label": "sample statistic"
+      },
+      "speakerNotes": "Speaker notes for prevention.",
+      "keywords": [
+        "prevention",
+        "kw2"
+      ]
+    },
+    {
+      "index": 3,
+      "title": "Treatment",
+      "kicker": "Part 4",
+      "bullets": [
+        "Treatment point one",
+        "Treatment point two"
+      ],
+      "stat": null,
+      "speakerNotes": "Speaker notes for treatment.",
+      "keywords": [
+        "treatment",
+        "kw3"
+      ]
+    },
+    {
+      "index": 4,
+      "title": "Return to play",
+      "kicker": "Part 5",
+      "bullets": [
+        "Return to play point one",
+        "Return to play point two"
+      ],
+      "stat": {
+        "value": "50%",
+        "label": "sample statistic"
+      },
+      "speakerNotes": "Speaker notes for return to play.",
+      "keywords": [
+        "return",
+        "kw4"
+      ]
+    }
+  ],
+  "sources": [
+    "Fixture source"
+  ]
+}
