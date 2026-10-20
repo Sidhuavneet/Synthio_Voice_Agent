@@ -10,7 +10,7 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/). If `uv` is not on PA
 
 ```sh
 uv sync
-cp .env.example .env                  # PowerShell: Copy-Item .env.example .env
+cp .env.example .env                  # or .env.local; PowerShell: Copy-Item .env.example .env
 uv run synthio-agent download-files   # optional: pre-fetch local models (VAD, turn detector)
 ```
 

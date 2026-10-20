@@ -1,4 +1,4 @@
-"""Application settings loaded from environment variables and ``backend/.env``."""
+"""Application settings from the environment, ``backend/.env`` and ``backend/.env.local``."""
 
 from functools import lru_cache
 from pathlib import Path
@@ -7,12 +7,13 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
-ENV_FILE = BACKEND_ROOT / ".env"
+# Later files take precedence, so .env.local overrides .env.
+ENV_FILES = (BACKEND_ROOT / ".env", BACKEND_ROOT / ".env.local")
 DEFAULT_DECKS_DIR = Path(__file__).resolve().parents[1] / "decks" / "data"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILE, env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_FILES, env_file_encoding="utf-8", extra="ignore")
 
     livekit_url: str | None = None
     livekit_api_key: str | None = None

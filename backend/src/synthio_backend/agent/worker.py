@@ -24,11 +24,13 @@ from synthio_backend.agent.protocol import (
     SLIDE_INDEX_ATTRIBUTE,
 )
 from synthio_backend.agent.slides import SlideController
-from synthio_backend.core.config import ENV_FILE, Settings, get_settings
+from synthio_backend.core.config import ENV_FILES, Settings, get_settings
 from synthio_backend.decks.repository import DeckRepository
 
 # The LiveKit CLI and Inference clients read LIVEKIT_* from the process environment.
-load_dotenv(ENV_FILE)
+# load_dotenv never overrides, so load the higher-precedence file first.
+for env_file in reversed(ENV_FILES):
+    load_dotenv(env_file)
 
 logger = logging.getLogger(__name__)
 
