@@ -7,7 +7,9 @@ import { toErrorMessage } from "@/lib/errors";
 import { describeMicrophoneError } from "@/lib/media-errors";
 import type { ConnectionDetails } from "@/lib/types";
 
-const AGENT_CONNECT_TIMEOUT_MS = 30_000;
+// The first job on a cold agent worker can take 30 s or more to start on a busy machine, and
+// useAgent never clears a "joined but did not complete initializing" failure once it fires.
+const AGENT_CONNECT_TIMEOUT_MS = 60_000;
 
 export interface AgentSessionError {
   kind: "microphone" | "connection";
@@ -36,7 +38,12 @@ export function useAgentSession(connection: ConnectionDetails): {
   });
   const [error, setError] = useState<AgentSessionError | null>(null);
 
-  const startSession = useEffectEvent((signal: AbortSignal) => session.start({ signal }));
+  // session.start enables the microphone by default; opt out so it is enabled exactly once
+  // below. A second concurrent enable waits on the first one's pending publication and stalls
+  // the room connection by up to 20 s.
+  const startSession = useEffectEvent((signal: AbortSignal) =>
+    session.start({ signal, tracks: { microphone: { enabled: false } } }),
+  );
   // Enabled alongside (not inside) session.start so a microphone failure can't mask a
   // connection failure; the pre-connect buffer still captures speech before the agent joins.
   const enableMicrophone = useEffectEvent(() =>
