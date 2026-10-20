@@ -6,6 +6,7 @@ from livekit.agents import Agent, RunContext, ToolError, function_tool
 
 from synthio_backend.agent.prompts import (
     build_instructions,
+    interrupted_tool_result,
     jump_tool_result,
     navigation_instructions,
     opening_instructions,
@@ -42,6 +43,10 @@ class PresenterAgent(Agent):
         current slide and briefly invited questions."""
         # Tools run while the preceding speech is still playing; switch only once it ends.
         await context.wait_for_playout()
+        # An interruption also ends the playout: the user cut in, so stay on this slide.
+        if context.speech_handle.interrupted:
+            logger.info("next_slide skipped: speech was interrupted")
+            return interrupted_tool_result(self._slides.index)
         try:
             index = await self._slides.next()
         except SlideIndexError as exc:
@@ -61,6 +66,9 @@ class PresenterAgent(Agent):
             reason: Short reason for switching, e.g. which question it answers.
         """
         await context.wait_for_playout()
+        if context.speech_handle.interrupted:
+            logger.info("go_to_slide %d skipped: speech was interrupted", index)
+            return interrupted_tool_result(self._slides.index)
         try:
             await self._slides.go_to(index)
         except SlideIndexError as exc:

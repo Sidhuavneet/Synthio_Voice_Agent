@@ -95,6 +95,13 @@ def jump_tool_result(slide: Slide, slide_count: int) -> str:
     )
 
 
+def interrupted_tool_result(current_index: int) -> str:
+    return (
+        "The user interrupted before the slide changed. The screen still shows slide index "
+        f"{current_index}."
+    )
+
+
 def navigation_instructions(slide: Slide, slide_count: int) -> str:
     return (
         "The user just switched the screen to another slide. Briefly acknowledge it and present "

@@ -40,13 +40,18 @@ _EXTRA_TOOL_STEPS = 2
 
 _DECK_REPOSITORY_KEY = "deck_repository"
 
+# A cold job process (imports plus the framework's local model preloading) can take well over
+# the 10 s default to initialise on a busy Windows machine. Timing out fails the first dispatch
+# and the retry adds about 30 s before the agent joins.
+_INITIALIZE_PROCESS_TIMEOUT_S = 60.0
+
 
 def _prewarm(proc: JobProcess) -> None:
     # Load and validate decks once per process so a broken deck file fails at startup.
     proc.userdata[_DECK_REPOSITORY_KEY] = DeckRepository.from_directory(get_settings().decks_dir)
 
 
-server = AgentServer(setup_fnc=_prewarm)
+server = AgentServer(setup_fnc=_prewarm, initialize_process_timeout=_INITIALIZE_PROCESS_TIMEOUT_S)
 
 
 def _build_session(settings: Settings, slide_count: int) -> AgentSession[None]:

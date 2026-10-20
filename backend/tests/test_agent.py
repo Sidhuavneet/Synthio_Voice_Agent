@@ -76,12 +76,21 @@ def test_presenter_exposes_slide_tools(deck: Deck) -> None:
     assert names == {"next_slide", "go_to_slide"}
 
 
+class StubSpeechHandle:
+    def __init__(self, interrupted: bool) -> None:
+        self.interrupted = interrupted
+
+
 class StubRunContext:
+    def __init__(self, interrupted: bool = False) -> None:
+        self.speech_handle = StubSpeechHandle(interrupted)
+
     async def wait_for_playout(self) -> None:
         return None
 
 
 _CONTEXT = cast(RunContext[None], StubRunContext())
+_INTERRUPTED = cast(RunContext[None], StubRunContext(interrupted=True))
 
 
 async def _presenter(deck: Deck, start: int = 0) -> tuple[PresenterAgent, SlideController]:
@@ -102,6 +111,20 @@ async def test_next_slide_on_last_slide_raises(deck: Deck) -> None:
     with pytest.raises(ToolError, match="last slide"):
         await agent.next_slide(_CONTEXT)
     assert slides.index == len(deck.slides) - 1
+
+
+async def test_next_slide_after_interruption_stays(deck: Deck) -> None:
+    agent, slides = await _presenter(deck)
+    result = await agent.next_slide(_INTERRUPTED)
+    assert slides.index == 0
+    assert "interrupted" in result
+
+
+async def test_go_to_slide_after_interruption_stays(deck: Deck) -> None:
+    agent, slides = await _presenter(deck)
+    result = await agent.go_to_slide(_INTERRUPTED, 3, "question about slide 3")
+    assert slides.index == 0
+    assert "interrupted" in result
 
 
 async def test_go_to_slide_returns_slide(deck: Deck) -> None:
