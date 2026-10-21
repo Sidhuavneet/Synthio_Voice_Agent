@@ -33,6 +33,10 @@
         "statistics",
         "famous players",
         "Putellas"
+      ],
+      "sourceIds": [
+        0,
+        8
       ]
     },
     {
@@ -59,6 +63,9 @@
         "valgus",
         "pop",
         "cutting"
+      ],
+      "sourceIds": [
+        1
       ]
     },
     {
@@ -85,6 +92,10 @@
         "nordic",
         "coaches",
         "reduce risk"
+      ],
+      "sourceIds": [
+        2,
+        3
       ]
     },
     {
@@ -108,6 +119,9 @@
         "graft",
         "meniscus",
         "treatment"
+      ],
+      "sourceIds": [
+        6
       ]
     },
     {
@@ -134,6 +148,10 @@
         "running",
         "strength",
         "how long"
+      ],
+      "sourceIds": [
+        7,
+        5
       ]
     },
     {
@@ -160,6 +178,10 @@
         "hop test",
         "psychological",
         "when can I play"
+      ],
+      "sourceIds": [
+        4,
+        5
       ]
     }
   ],
@@ -169,6 +191,9 @@
     "Thorborg K, et al. Effect of specific exercise-based football injury prevention programmes on the overall injury rate: a systematic review and meta-analysis of the FIFA 11 and 11+ programmes. Br J Sports Med. 2017;51:562–571.",
     "Webster KE, Hewett TE. Meta-analysis of meta-analyses of anterior cruciate ligament injury reduction training programs. J Orthop Res. 2018;36:2696–2708.",
     "Ardern CL, et al. Fifty-five per cent return to competitive sport following ACL reconstruction surgery: an updated systematic review and meta-analysis. Br J Sports Med. 2014;48:1543–1552.",
-    "Grindem H, et al. Simple decision rules can reduce reinjury risk by 84% after ACL reconstruction: the Delaware-Oslo ACL cohort study. Br J Sports Med. 2016;50:804–808."
+    "Grindem H, et al. Simple decision rules can reduce reinjury risk by 84% after ACL reconstruction: the Delaware-Oslo ACL cohort study. Br J Sports Med. 2016;50:804–808.",
+    "Benjaminse A, Gokeler A, van der Schans CP. Clinical diagnosis of an anterior cruciate ligament rupture: a meta-analysis. J Orthop Sports Phys Ther. 2006;36:267–288. (Lachman pooled sensitivity 85%, specificity 94%.)",
+    "van Melick N, et al. Evidence-based clinical practice update: practice guidelines for anterior cruciate ligament rehabilitation based on a systematic review and multidisciplinary consensus. Br J Sports Med. 2016;50:1506–1515.",
+    "Waldén M, et al. ACL injuries in men's professional football: a 15-year prospective study on time trends and return-to-play rates reveals only 65% of players still play at the top level 3 years after ACL rupture. Br J Sports Med. 2016;50:744–750."
   ]
 }

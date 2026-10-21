@@ -39,6 +39,7 @@ class Slide(CamelModel):
     stat: SlideStat | None = None
     speaker_notes: NonEmptyStr
     keywords: list[NonEmptyStr] = Field(default_factory=list)
+    source_ids: list[int] = Field(default_factory=list)
 
 
 class DeckSummary(CamelModel):
@@ -65,6 +66,17 @@ class Deck(CamelModel):
         indices = [slide.index for slide in self.slides]
         if indices != list(range(len(self.slides))):
             raise ValueError(f"slide indices must be contiguous from 0 in order, got {indices}")
+        return self
+
+    @model_validator(mode="after")
+    def _check_source_ids(self) -> Self:
+        for slide in self.slides:
+            invalid = [i for i in slide.source_ids if not 0 <= i < len(self.sources)]
+            if invalid:
+                raise ValueError(
+                    f"slide {slide.index} sourceIds {invalid} are outside deck.sources "
+                    f"(0 to {len(self.sources) - 1})"
+                )
         return self
 
     def summary(self) -> DeckSummary:

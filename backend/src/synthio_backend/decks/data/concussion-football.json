@@ -30,6 +30,9 @@
         "unconscious",
         "scan",
         "symptoms"
+      ],
+      "sourceIds": [
+        0
       ]
     },
     {
@@ -53,6 +56,9 @@
         "if in doubt",
         "red flags",
         "emergency"
+      ],
+      "sourceIds": [
+        0
       ]
     },
     {
@@ -75,6 +81,9 @@
         "rules",
         "permanent",
         "match"
+      ],
+      "sourceIds": [
+        5
       ]
     },
     {
@@ -101,6 +110,9 @@
         "recovery",
         "how long",
         "clearance"
+      ],
+      "sourceIds": [
+        0
       ]
     },
     {
@@ -127,6 +139,12 @@
         "youth",
         "children",
         "neurodegenerative"
+      ],
+      "sourceIds": [
+        1,
+        2,
+        3,
+        4
       ]
     }
   ],

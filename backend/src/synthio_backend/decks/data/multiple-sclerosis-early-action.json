@@ -34,6 +34,10 @@
         "age",
         "what is MS",
         "overview"
+      ],
+      "sourceIds": [
+        0,
+        5
       ]
     },
     {
@@ -57,6 +61,9 @@
         "referral",
         "presentation",
         "primary care"
+      ],
+      "sourceIds": [
+        5
       ]
     },
     {
@@ -80,6 +87,9 @@
         "kappa free light chains",
         "central vein sign",
         "misdiagnosis"
+      ],
+      "sourceIds": [
+        1
       ]
     },
     {
@@ -103,6 +113,10 @@
         "brain volume",
         "disease activity",
         "relapses"
+      ],
+      "sourceIds": [
+        2,
+        4
       ]
     },
     {
@@ -126,6 +140,10 @@
         "timing",
         "options",
         "pregnancy"
+      ],
+      "sourceIds": [
+        3,
+        4
       ]
     },
     {
@@ -149,6 +167,10 @@
         "smoking",
         "adherence",
         "patient support"
+      ],
+      "sourceIds": [
+        6,
+        4
       ]
     }
   ],
@@ -157,6 +179,8 @@
     "Montalban X, et al. Diagnosis of multiple sclerosis: 2024 revisions of the McDonald criteria. Lancet Neurol. 2025;24:850–865.",
     "Kappos L, et al. Contribution of relapse-independent progression vs relapse-associated worsening to overall confirmed disability accumulation in typical relapsing multiple sclerosis in a pooled analysis of 2 randomized clinical trials. JAMA Neurol. 2020;77:1132–1140.",
     "He A, et al. Timing of high-efficacy therapy for relapsing-remitting multiple sclerosis: a systematic review and observational cohort study. Lancet Neurol. 2020;19:307–316.",
-    "Giovannoni G, et al. Brain health: time matters in multiple sclerosis. Mult Scler Relat Disord. 2016;9 Suppl 1:S5–S48."
+    "Giovannoni G, et al. Brain health: time matters in multiple sclerosis. Mult Scler Relat Disord. 2016;9 Suppl 1:S5–S48.",
+    "Thompson AJ, Baranzini SE, Geurts J, Hemmer B, Ciccarelli O. Multiple sclerosis. Lancet. 2018;391:1622–1636.",
+    "Wattjes MP, et al. 2021 MAGNIMS–CMSC–NAIMS consensus recommendations on the use of MRI in patients with multiple sclerosis. Lancet Neurol. 2021;20:653–670."
   ]
 }
