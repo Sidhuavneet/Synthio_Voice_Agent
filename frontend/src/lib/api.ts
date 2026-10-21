@@ -1,4 +1,4 @@
-import type { ConnectionDetails, Deck, DeckSummary } from "@/lib/types";
+import type { ConnectionDetails, Deck, DeckSummary, ResumeRequest } from "@/lib/types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8500").replace(/\/+$/, "");
 
@@ -61,10 +61,11 @@ export function getDeck(deckId: string, signal?: AbortSignal): Promise<Deck> {
   return request<Deck>(`/decks/${encodeURIComponent(deckId)}`, { signal });
 }
 
-export function createSession(deckId: string): Promise<ConnectionDetails> {
+/** Requests room credentials; `resume` continues a previous session where it left off. */
+export function createSession(deckId: string, resume?: ResumeRequest): Promise<ConnectionDetails> {
   return request<ConnectionDetails>("/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ deckId }),
+    body: JSON.stringify(resume ? { deckId, resume } : { deckId }),
   });
 }

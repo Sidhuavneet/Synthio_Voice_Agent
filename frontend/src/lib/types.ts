@@ -5,13 +5,23 @@ export interface SlideStat {
   label: string;
 }
 
+/** One on-screen bullet; points are shown and narrated in order (contract §3). */
+export interface SlidePoint {
+  text: string;
+  /** Very short paragraph shown under the bullet. */
+  detail: string;
+  /** What the presenter says for this point, verbatim. */
+  narration: string;
+}
+
 export interface Slide {
   index: number;
   title: string;
   kicker: string;
-  bullets: string[];
+  /** Spoken lead-in sentence. */
+  intro: string;
+  points: SlidePoint[];
   stat: SlideStat | null;
-  speakerNotes: string;
   keywords: string[];
   /** Indices into `Deck.sources` backing this slide (may be empty). */
   sourceIds: number[];
@@ -40,6 +50,13 @@ export interface DeckSummary {
   subtitle: string;
   category: string;
   slideCount: number;
+}
+
+/** Where a returning user left off (`POST /api/session` `resume`, contract §4). */
+export interface ResumeRequest {
+  slideIndex: number;
+  /** Indices of slides already fully presented. */
+  presented: number[];
 }
 
 export interface ConnectionDetails {
@@ -80,9 +97,19 @@ export interface TurnMetrics {
   totalMs: number | null;
 }
 
+export type SessionErrorCode = "quota_exceeded" | "provider_error" | "internal";
+
+/** The agent hit an unrecoverable error and is about to leave. */
+export interface SessionErrorEvent {
+  code: SessionErrorCode;
+  /** User-safe message. */
+  message: string;
+}
+
 /** Data packets on the `synthio.events` topic, discriminated by `type`. */
 export type AgentEvent =
   | ({ type: "compliance_flag" } & ComplianceFlag)
+  | ({ type: "session_error" } & SessionErrorEvent)
   | ({ type: "turn_metrics" } & TurnMetrics);
 
 export interface SlideTime {

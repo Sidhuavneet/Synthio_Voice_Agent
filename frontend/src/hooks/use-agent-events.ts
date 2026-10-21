@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useDataChannel } from "@livekit/components-react";
 import { parseAgentEvent } from "@/lib/events";
 import { EVENTS_TOPIC } from "@/lib/protocol";
-import type { ComplianceFlag, TurnMetrics } from "@/lib/types";
+import type { ComplianceFlag, SessionErrorEvent, TurnMetrics } from "@/lib/types";
 
 export interface LatencyStats {
   latest: TurnMetrics | null;
@@ -16,6 +16,8 @@ export interface LatencyStats {
 export interface AgentEvents {
   complianceFlags: ComplianceFlag[];
   latency: LatencyStats;
+  /** Set when the agent reported an unrecoverable error (it leaves right after). */
+  sessionError: SessionErrorEvent | null;
 }
 
 interface LatencyTotals {
@@ -42,6 +44,7 @@ function addTurn(totals: LatencyTotals, turn: TurnMetrics): LatencyTotals {
 export function useAgentEvents(): AgentEvents {
   const [complianceFlags, setComplianceFlags] = useState<ComplianceFlag[]>([]);
   const [totals, setTotals] = useState<LatencyTotals>(INITIAL_TOTALS);
+  const [sessionError, setSessionError] = useState<SessionErrorEvent | null>(null);
 
   // Must be stable: useDataChannel re-subscribes whenever the callback identity changes.
   const handleMessage = useCallback((message: { payload: Uint8Array }) => {
@@ -52,6 +55,8 @@ export function useAgentEvents(): AgentEvents {
       );
     } else if (event?.type === "turn_metrics") {
       setTotals((prev) => addTurn(prev, event));
+    } else if (event?.type === "session_error") {
+      setSessionError({ code: event.code, message: event.message });
     }
   }, []);
 
@@ -64,5 +69,6 @@ export function useAgentEvents(): AgentEvents {
       averageTotalMs: totals.timedTurns > 0 ? totals.sumTotalMs / totals.timedTurns : null,
       turnCount: totals.turnCount,
     },
+    sessionError,
   };
 }
