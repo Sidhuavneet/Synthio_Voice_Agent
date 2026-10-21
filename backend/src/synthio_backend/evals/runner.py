@@ -1,7 +1,7 @@
 """Runs eval cases through the real presenter agent with LiveKit Agents' testing API.
 
-Each case gets a fresh text-only session (no audio) with the configured LiveKit Inference
-LLM, starting on slide 0 with no prior conversation.
+Each case gets a fresh text-only session (no audio) with the configured LLM (provider per
+docs/CONTRACT.md section 2), starting on slide 0 with no prior conversation.
 """
 
 import asyncio
@@ -9,12 +9,16 @@ import json
 import logging
 from collections.abc import Sequence
 
-from livekit.agents import AgentSession, FunctionCallEvent, RunEvent, RunResult, inference
+from livekit.agents import AgentSession, FunctionCallEvent, RunEvent, RunResult
 
+from synthio_backend.agent.adapters import SessionSpeech
 from synthio_backend.agent.events import AgentEvent
-from synthio_backend.agent.presenter import PresenterAgent, max_tool_steps
+from synthio_backend.agent.presentation import PresentationController
+from synthio_backend.agent.presenter import PresenterAgent
+from synthio_backend.agent.providers import build_llm
 from synthio_backend.agent.session_log import SessionLog
 from synthio_backend.agent.slides import SlideController
+from synthio_backend.core.config import Settings
 from synthio_backend.decks.models import Deck
 from synthio_backend.evals.dataset import EvalCase
 from synthio_backend.evals.scoring import CaseResult, case_result
@@ -28,6 +32,14 @@ _START_SLIDE = 0
 class _DiscardEvents:
     def publish(self, event: AgentEvent) -> None:
         """Evals check tool calls, not the data packets they would publish."""
+
+
+class _DiscardProgress:
+    def show_point(self, point: int) -> None:
+        """Evals check tool calls, not presentation progress."""
+
+    def show_presented(self, presented: Sequence[int]) -> None:
+        """Evals check tool calls, not presentation progress."""
 
 
 class _EvalPresenter(PresenterAgent):
@@ -62,16 +74,18 @@ def raised_flag(events: Sequence[RunEvent]) -> str | None:
     return category if isinstance(category, str) else None
 
 
-async def run_case(deck: Deck, llm_model: str, case: EvalCase) -> CaseResult:
-    slides = SlideController(len(deck.slides))
-    await slides.go_to(_START_SLIDE)
-    agent = _EvalPresenter(deck, slides, SessionLog(), _DiscardEvents())
+async def run_case(deck: Deck, settings: Settings, case: EvalCase) -> CaseResult:
+    slides = SlideController(len(deck.slides), start=_START_SLIDE)
     try:
         async with (
             asyncio.timeout(CASE_TIMEOUT_S),
-            inference.LLM(model=llm_model) as model,
-            AgentSession(llm=model, max_tool_steps=max_tool_steps(len(deck.slides))) as session,
+            build_llm(settings) as model,
+            AgentSession(llm=model) as session,
         ):
+            presentation = PresentationController(
+                deck, slides, SessionSpeech(session), _DiscardProgress()
+            )
+            agent = _EvalPresenter(deck, slides, presentation, SessionLog(), _DiscardEvents())
             await session.start(agent)
             result: RunResult[None] = await session.run(user_input=case.user_input)
     # One failing case (API error, timeout, unexpected model behaviour) must not stop the run.
@@ -82,12 +96,12 @@ async def run_case(deck: Deck, llm_model: str, case: EvalCase) -> CaseResult:
 
 
 async def run_cases(
-    deck: Deck, llm_model: str, cases: Sequence[EvalCase], concurrency: int
+    deck: Deck, settings: Settings, cases: Sequence[EvalCase], concurrency: int
 ) -> list[CaseResult]:
     semaphore = asyncio.Semaphore(concurrency)
 
     async def bounded(case: EvalCase) -> CaseResult:
         async with semaphore:
-            return await run_case(deck, llm_model, case)
+            return await run_case(deck, settings, case)
 
     return list(await asyncio.gather(*(bounded(case) for case in cases)))

@@ -6,6 +6,7 @@ import json
 import sys
 import time
 
+from synthio_backend.agent.providers import describe_providers
 from synthio_backend.core.config import get_settings, load_env_files
 from synthio_backend.decks.models import Deck
 from synthio_backend.decks.repository import DeckLoadError, DeckNotFoundError, DeckRepository
@@ -68,9 +69,10 @@ def main() -> None:
     except (DeckLoadError, DeckNotFoundError, DatasetError) as exc:
         sys.exit(str(exc))
 
-    print(f"Running {len(cases)} cases for {deck.id} with {settings.llm_model} ...")
+    model = describe_providers(settings)["llm"]
+    print(f"Running {len(cases)} cases for {deck.id} with {model} ...")
     started = time.monotonic()
-    results = asyncio.run(run_cases(deck, settings.llm_model, cases, _CONCURRENCY))
+    results = asyncio.run(run_cases(deck, settings, cases, _CONCURRENCY))
     summary = summarize(results)
 
     print(format_table(results))
@@ -81,7 +83,7 @@ def main() -> None:
         json.dumps(
             {
                 "deckId": deck.id,
-                "model": settings.llm_model,
+                "model": model,
                 "durationSec": round(time.monotonic() - started),
                 "summary": summary.model_dump(by_alias=True),
                 "cases": [{**r.model_dump(by_alias=True), "passed": r.passed} for r in results],
