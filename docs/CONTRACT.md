@@ -55,6 +55,7 @@ JSON keys are **camelCase** on the wire (Pydantic alias generator); Python field
     "role": "Sports medicine physician"
   },
   "disclaimer": "Educational content only. Not medical advice.",
+  "suggestedQuestions": ["Does it usually happen from a tackle?"], // 0–4, shown as "Try asking" chips
   "slides": [                            // 5–6 items, index == position (0-based)
     {
       "index": 0,
@@ -119,7 +120,7 @@ Built-in attributes (`lk.agent.state`) and transcriptions (`lk.transcription` te
 
 | Tool | Args | Effect |
 |---|---|---|
-| `go_to_slide` | `index: int`, `reason: str` | Shows a slide to answer a question (display only; does NOT move the presentation cursor). |
+| `go_to_slide` | `index: int`, `reason: str` | Shows a slide to answer a question (display only; does NOT move the presentation cursor). `reason` is ≤ 5 words, shown on screen ("Jumped from slide 2 to answer: …"). |
 | `present_slide` | `index: int` | User asked to go to / repeat a slide: moves the cursor there and starts scripted narration from its first point. |
 | `resume_presentation` | — | User says continue/yes/go on: returns to the cursor slide (if the screen differs) and resumes scripted narration from the interrupted point. |
 | `flag_compliance` | `category: "off_label" \| "personal_medical_advice" \| "adverse_event" \| "out_of_scope"`, `question: str` | Records the flag in the session log and publishes a `compliance_flag` event. The agent then gives a compliant deflection (adverse events: thank, advise contacting their doctor and the regulator/manufacturer reporting line, never assess causality). |
@@ -133,6 +134,8 @@ Reliable data packets on topic `synthio.events`, payload = UTF-8 JSON with a `ty
 | `compliance_flag` | `id: string`, `category`, `question: string`, `slideIndex: number`, `timestamp: number` (epoch ms) | Agent called `flag_compliance`. |
 | `session_error` | `code: "quota_exceeded" \| "provider_error" \| "internal"`, `message: string` (user-safe) | The agent session hit an unrecoverable error; published right before the agent leaves. |
 | `turn_metrics` | `turnId: string`, `sttMs: number \| null`, `eouMs: number \| null`, `llmTtftMs: number \| null`, `ttsTtfbMs: number \| null`, `totalMs: number \| null` | After each agent reply, from LiveKit `metrics_collected` events (`totalMs` = end-of-utterance delay + LLM TTFT + TTS TTFB). |
+| `slide_changed` | `fromIndex: number`, `toIndex: number`, `trigger: "question" \| "user" \| "auto" \| "resume"`, `reason: string \| null`, `question: string \| null`, `timestamp: number` (epoch ms) | Every change of `slide.index`. `question`: `go_to_slide` jump (with its `reason` and the user turn being answered); `user`: the user picked or asked for a slide; `auto`: the presentation moved on; `resume`: back to the cursor after an answer. |
+| `interruption` | `kind: "barge_in" \| "backchannel"`, `slideIndex: number`, `pointIndex: number \| null`, `detectionMs: number`, `timestamp: number` (epoch ms) | The user spoke over the agent, from LiveKit's adaptive `overlapping_speech` verdict: `barge_in` = real interruption (`detectionMs` = speech onset → verdict), `backchannel` = talked through ("mhm"). Skipped when the agent simply finished first. Not sent after a fallback to VAD interruption. |
 
 ### Frontend → Agent: `session.report` RPC
 
@@ -149,11 +152,22 @@ SessionReport = {
   "slides": [{ "index": 0, "title": "...", "timeSec": 41 }],           // time each slide was on screen
   "questions": [{ "question": "...", "slideIndex": 4, "answered": true }],
   "complianceFlags": [ /* compliance_flag events */ ],
-  "followUps": ["Actionable follow-up item", "..."],                   // unanswered/open items
+  "followUps": [{                                                       // actions after the session
+    "kind": "adverse_event" | "medical_information" | "follow_up",
+    "text": "Report the adverse event: ...",
+    "aeCriteria": {                                                     // adverse_event only, else null
+      "identifiablePatient": true, "identifiableReporter": true,
+      "suspectProduct": true, "adverseEvent": true                      // the 4 minimum report criteria
+    } | null
+  }],
   "interests": ["Topic the user engaged with most", "..."]
 }
 ```
-Facts (`durationSec`, `slides`, `complianceFlags`) come from the agent's session log; `summary`, `questions`, `followUps`, `interests` are LLM-generated (structured output) from the chat history. The frontend uses an RPC response timeout of 30 s, shows the report after the call, then disconnects.
+Facts (`durationSec`, `slides`, `complianceFlags`) come from the agent's session log; `summary`, `questions`, `followUps`, `interests` are LLM-generated (structured output) from the chat history. Every adverse event flag and every open question is guaranteed a follow-up, even without the LLM: code adds one `adverse_event` follow-up (`aeCriteria: null`) per `adverse_event` flag whose question no LLM `adverse_event` follow-up quotes, and one `medical_information` follow-up per unanswered question no follow-up quotes. The frontend uses an RPC response timeout of 30 s, shows the report after the call, then disconnects.
+
+### Frontend → Agent: typed questions
+
+The "Try asking" chips send the question with `useSessionMessages().send` (text stream topic `lk.chat`). The agent handles it like a spoken turn: it stops the scripted narration first, then answers by voice.
 
 ### Point highlighting
 

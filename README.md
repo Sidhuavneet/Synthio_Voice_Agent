@@ -17,9 +17,9 @@ Next.js (3000) ──REST──▶ FastAPI (8500) ── mints LiveKit token + d
 ```
 
 1. You pick a deck. The backend returns a LiveKit token that also tells LiveKit to send the presenter agent into the room.
-2. The agent greets you and presents slide by slide, using its `next_slide` tool to move on.
-3. **Questions change slides:** when you ask something, the agent calls `go_to_slide` to switch to the most relevant slide, then answers.
-4. **Interruptions:** start talking and the agent stops mid-sentence. LiveKit's turn detector tells real interruptions apart from "mhm".
+2. The agent greets you and presents each slide from an approved script, point by point, highlighting the bullet it is speaking. It moves on by itself after a short silence.
+3. **Questions change slides:** when you ask something, the LLM calls `go_to_slide` to show the most relevant slide, then answers in one to three sentences. The screen and transcript say why it jumped. After a short silence it goes back to where it was.
+4. **Interruptions:** start talking and the agent stops mid-sentence. LiveKit's adaptive interruption model tells real interruptions apart from "mhm". The bullet you cut into is marked as paused, and the agent resumes from that point.
 5. **One source of truth:** the agent owns the current slide and publishes it as the `slide.index` participant attribute. Clicking a slide sends a `slides.navigate` call to the agent.
 
 The full interface is in [docs/CONTRACT.md](docs/CONTRACT.md).
@@ -46,6 +46,26 @@ npm run dev                       # http://localhost:3000
 ```
 
 Open http://localhost:3000, pick a deck, allow the microphone, and start talking whenever you like.
+
+## 60-second demo
+
+Use the **ACL** deck (or **Tenvoryx** for the pharma flow). Every line below can be spoken, or clicked in the "Try asking" chips under the slides.
+
+1. **Let it present** for a few seconds: the spoken bullet is highlighted.
+2. **Cut in mid-sentence:** "Does it usually happen from a tackle?" It stops at once, marks the bullet you interrupted as *Paused here*, jumps to *How the ACL tears* with a "Jumped from slide 1 to answer: …" chip, and answers.
+3. **Stay quiet:** it says "Right, back to where we were." and resumes from the paused bullet. Saying "mhm" while it talks does not stop it; the latency card counts it as *talked through*.
+4. **"How long until I can play again?"** answers with the general timeline plus a caveat. Educational, not flagged.
+5. **"Should I skip surgery and just do rehab?"** is flagged as personal medical advice and deflected.
+6. On **Tenvoryx**: "One of my patients felt dizzy after starting Tenvoryx." is flagged as an adverse event. The agent thanks them and points to safety reporting, without judging causality.
+7. **End & view report:** a session timeline (slides over time, with every jump, cut-in and flag), questions, and typed follow-ups. Adverse events show which of the four minimum reporting criteria were captured. **Copy follow-up email** gives a ready hand-off.
+
+## Design decisions
+
+- **Scripted narration, LLM only for questions.** Slide content is spoken verbatim from approved text, as regulated medical and pharma content requires. The LLM never improvises a slide; it only answers, routes and flags. This also makes presenting cost no LLM tokens and keeps latency low.
+- **The agent owns the slide.** One source of truth (`slide.index`), so voice, clicks and resume can never disagree. Every change carries a `trigger` (question, user, auto, resume), which drives the on-screen explanations.
+- **Measured, not claimed.** Per-turn voice-to-voice latency (end of turn, LLM time to first token, TTS time to first byte) and barge-in detection time are shown live and come straight from LiveKit's metrics and its adaptive interruption verdicts.
+- **Compliance that can't be talked out of.** Two tiers: answer with a caveat, or flag and deflect. Every adverse event flag and every open question is guaranteed a follow-up, even without the LLM.
+- **Evals.** `uv run synthio-eval --deck acl-football` runs a labelled dataset through the real agent LLM and tools, and scores slide routing accuracy and compliance precision and recall. The latest results are in [backend/evals/results](backend/evals/results).
 
 ## Repository layout
 
