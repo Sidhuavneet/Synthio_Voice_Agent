@@ -9,6 +9,12 @@
     "role": "Sport and exercise medicine physician"
   },
   "disclaimer": "Educational content only. Not medical advice. Any player with a suspected concussion should be assessed by a healthcare professional.",
+  "suggestedQuestions": [
+    "What should a coach do if a player looks dazed?",
+    "Is heading the ball bad for the brain long term?",
+    "How soon can a player train again?",
+    "My son took a knock yesterday and has a headache. Is it a concussion?"
+  ],
   "slides": [
     {
       "index": 0,

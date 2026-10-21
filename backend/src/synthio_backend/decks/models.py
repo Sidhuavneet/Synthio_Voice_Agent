@@ -99,6 +99,8 @@ class Deck(CamelModel):
     audience: NonEmptyStr
     presenter: Presenter
     disclaimer: NonEmptyStr
+    suggested_questions: list[NonEmptyStr] = Field(default_factory=list, max_length=4)
+    """Shown as "Try asking" chips; chosen to show off routing and compliance."""
     slides: list[Slide] = Field(min_length=MIN_SLIDES, max_length=MAX_SLIDES)
     sources: list[NonEmptyStr] = Field(default_factory=list)
 

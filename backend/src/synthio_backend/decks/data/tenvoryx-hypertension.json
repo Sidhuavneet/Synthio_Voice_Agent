@@ -9,6 +9,12 @@
     "role": "AI medical science liaison"
   },
   "disclaimer": "Fictional product. Tenvoryx (aldoquorin) and the ALDERA trial are invented for this demonstration. All product data are fictitious and must not be used for clinical decisions.",
+  "suggestedQuestions": [
+    "How does it actually lower blood pressure?",
+    "What did the phase 3 trial show?",
+    "Can I prescribe it during pregnancy?",
+    "One of my patients felt dizzy after starting Tenvoryx."
+  ],
   "slides": [
     {
       "index": 0,

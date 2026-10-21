@@ -9,6 +9,12 @@
     "role": "Sports medicine physician"
   },
   "disclaimer": "Educational content only. Not medical advice. Always consult a qualified clinician about an individual injury.",
+  "suggestedQuestions": [
+    "Does it usually happen from a tackle?",
+    "When do players start running again after surgery?",
+    "How long until I can play again?",
+    "Should I skip surgery and just do rehab?"
+  ],
   "slides": [
     {
       "index": 0,

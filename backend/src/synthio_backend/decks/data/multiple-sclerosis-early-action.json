@@ -9,6 +9,12 @@
     "role": "AI medical science liaison"
   },
   "disclaimer": "Unbranded disease education for healthcare professionals. Not promotional and not medical advice. Treatment decisions should follow local guidelines and product labelling.",
+  "suggestedQuestions": [
+    "Which early symptoms should a GP watch for?",
+    "How is the diagnosis confirmed?",
+    "Why not wait and see before starting treatment?",
+    "Which drug should I start my patient on?"
+  ],
   "slides": [
     {
       "index": 0,
