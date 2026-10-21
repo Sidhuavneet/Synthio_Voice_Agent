@@ -14,15 +14,23 @@
       "index": 0,
       "title": "Why it matters",
       "kicker": "Part 1",
-      "bullets": [
-        "Why it matters point one",
-        "Why it matters point two"
+      "intro": "Intro for why it matters.",
+      "points": [
+        {
+          "text": "Why it matters point one",
+          "detail": "Detail for why it matters point one.",
+          "narration": "Narration for why it matters point one, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        },
+        {
+          "text": "Why it matters point two",
+          "detail": "Detail for why it matters point two.",
+          "narration": "Narration for why it matters point two, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        }
       ],
       "stat": {
         "value": "10%",
         "label": "sample statistic"
       },
-      "speakerNotes": "Speaker notes for why it matters.",
       "keywords": [
         "why",
         "kw0"
@@ -32,12 +40,20 @@
       "index": 1,
       "title": "How it happens",
       "kicker": "Part 2",
-      "bullets": [
-        "How it happens point one",
-        "How it happens point two"
+      "intro": "Intro for how it happens.",
+      "points": [
+        {
+          "text": "How it happens point one",
+          "detail": "Detail for how it happens point one.",
+          "narration": "Narration for how it happens point one, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        },
+        {
+          "text": "How it happens point two",
+          "detail": "Detail for how it happens point two.",
+          "narration": "Narration for how it happens point two, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        }
       ],
       "stat": null,
-      "speakerNotes": "Speaker notes for how it happens.",
       "keywords": [
         "how",
         "kw1"
@@ -47,15 +63,23 @@
       "index": 2,
       "title": "Prevention",
       "kicker": "Part 3",
-      "bullets": [
-        "Prevention point one",
-        "Prevention point two"
+      "intro": "Intro for prevention.",
+      "points": [
+        {
+          "text": "Prevention point one",
+          "detail": "Detail for prevention point one.",
+          "narration": "Narration for prevention point one, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        },
+        {
+          "text": "Prevention point two",
+          "detail": "Detail for prevention point two.",
+          "narration": "Narration for prevention point two, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        }
       ],
       "stat": {
         "value": "30%",
         "label": "sample statistic"
       },
-      "speakerNotes": "Speaker notes for prevention.",
       "keywords": [
         "prevention",
         "kw2"
@@ -65,12 +89,20 @@
       "index": 3,
       "title": "Treatment",
       "kicker": "Part 4",
-      "bullets": [
-        "Treatment point one",
-        "Treatment point two"
+      "intro": "Intro for treatment.",
+      "points": [
+        {
+          "text": "Treatment point one",
+          "detail": "Detail for treatment point one.",
+          "narration": "Narration for treatment point one, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        },
+        {
+          "text": "Treatment point two",
+          "detail": "Detail for treatment point two.",
+          "narration": "Narration for treatment point two, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        }
       ],
       "stat": null,
-      "speakerNotes": "Speaker notes for treatment.",
       "keywords": [
         "treatment",
         "kw3"
@@ -80,15 +112,23 @@
       "index": 4,
       "title": "Return to play",
       "kicker": "Part 5",
-      "bullets": [
-        "Return to play point one",
-        "Return to play point two"
+      "intro": "Intro for return to play.",
+      "points": [
+        {
+          "text": "Return to play point one",
+          "detail": "Detail for return to play point one.",
+          "narration": "Narration for return to play point one, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        },
+        {
+          "text": "Return to play point two",
+          "detail": "Detail for return to play point two.",
+          "narration": "Narration for return to play point two, spoken verbatim by the presenter so that the fixture meets the twenty word minimum for every narration."
+        }
       ],
       "stat": {
         "value": "50%",
         "label": "sample statistic"
       },
-      "speakerNotes": "Speaker notes for return to play.",
       "keywords": [
         "return",
         "kw4"

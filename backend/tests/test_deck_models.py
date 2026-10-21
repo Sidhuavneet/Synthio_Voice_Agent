@@ -8,13 +8,15 @@ from synthio_backend.decks.models import Deck
 
 def test_valid_deck_parses_camel_case(deck: Deck) -> None:
     assert deck.id == "sample-deck"
-    assert deck.slides[0].speaker_notes.startswith("Speaker notes")
+    assert deck.slides[0].intro.startswith("Intro for")
+    assert deck.slides[0].points[1].text == "Why it matters point two"
     assert deck.slides[1].stat is None
 
 
 def test_deck_serialises_with_camel_case_keys(deck: Deck) -> None:
     dumped = deck.model_dump(by_alias=True)
-    assert "speakerNotes" in dumped["slides"][0]
+    assert set(dumped["slides"][0]["points"][0]) == {"text", "detail", "narration"}
+    assert "sourceIds" in dumped["slides"][0]
     assert deck.summary().model_dump(by_alias=True)["slideCount"] == 5
 
 
@@ -39,10 +41,42 @@ def test_rejects_out_of_order_indices(deck_data: dict[str, Any]) -> None:
         Deck.model_validate(deck_data)
 
 
-@pytest.mark.parametrize("bullets", [["only one"], ["a", "b", "c", "d", "e"]])
-def test_rejects_bullet_count(deck_data: dict[str, Any], bullets: list[str]) -> None:
-    deck_data["slides"][0]["bullets"] = bullets
-    with pytest.raises(ValidationError):
+@pytest.mark.parametrize("count", [1, 5])
+def test_rejects_point_count(deck_data: dict[str, Any], count: int) -> None:
+    point = deck_data["slides"][0]["points"][0]
+    deck_data["slides"][0]["points"] = [point] * count
+    with pytest.raises(ValidationError, match="points"):
+        Deck.model_validate(deck_data)
+
+
+_WORDS_19 = " ".join(["word"] * 19)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("text", "x" * 71),
+        ("detail", "x" * 161),
+        ("narration", _WORDS_19),
+        ("narration", " ".join(["word"] * 46)),
+        ("narration", "   "),
+    ],
+)
+def test_rejects_point_limits(deck_data: dict[str, Any], field: str, value: str) -> None:
+    deck_data["slides"][0]["points"][0][field] = value
+    with pytest.raises(ValidationError, match=field):
+        Deck.model_validate(deck_data)
+
+
+def test_rejects_long_intro(deck_data: dict[str, Any]) -> None:
+    deck_data["slides"][0]["intro"] = " ".join(["word"] * 21)
+    with pytest.raises(ValidationError, match="intro"):
+        Deck.model_validate(deck_data)
+
+
+def test_rejects_v1_slide_fields(deck_data: dict[str, Any]) -> None:
+    deck_data["slides"][0]["speakerNotes"] = "v1 field"
+    with pytest.raises(ValidationError, match="speakerNotes"):
         Deck.model_validate(deck_data)
 
 
@@ -53,7 +87,7 @@ def test_rejects_missing_field(deck_data: dict[str, Any]) -> None:
 
 
 def test_rejects_unknown_field(deck_data: dict[str, Any]) -> None:
-    deck_data["slides"][0]["notes"] = "typo of speakerNotes"
+    deck_data["slides"][0]["notes"] = "typo of intro"
     with pytest.raises(ValidationError):
         Deck.model_validate(deck_data)
 

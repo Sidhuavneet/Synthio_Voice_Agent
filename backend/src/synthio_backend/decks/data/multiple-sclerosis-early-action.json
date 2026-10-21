@@ -14,17 +14,33 @@
       "index": 0,
       "title": "MS at a glance",
       "kicker": "The burden",
-      "bullets": [
-        "About 2.9 million people live with MS worldwide",
-        "Average age at diagnosis is 32",
-        "Women are affected about twice as often as men",
-        "A leading non-traumatic cause of disability in young adults"
+      "intro": "Let's start with the scale of the challenge that multiple sclerosis presents.",
+      "points": [
+        {
+          "text": "About 2.9 million people live with MS worldwide",
+          "detail": "MS is a chronic immune-mediated disease in which the immune system attacks myelin and nerve fibres in the brain, spinal cord and optic nerves.",
+          "narration": "Multiple sclerosis is a chronic immune mediated disease, in which the immune system attacks myelin and nerve fibres in the central nervous system. Around two point nine million people live with it worldwide."
+        },
+        {
+          "text": "Average age at diagnosis is 32",
+          "detail": "Most people are diagnosed in early adulthood, during their working and family-building years.",
+          "narration": "It is usually diagnosed in early adulthood, at an average age of about thirty two, right in people's working and family building years."
+        },
+        {
+          "text": "Women are affected about twice as often as men",
+          "detail": "Worldwide, the ratio of women to men living with MS is roughly two to one.",
+          "narration": "Women are affected roughly twice as often as men, a pattern that is seen in data collected from around the world."
+        },
+        {
+          "text": "A leading non-traumatic cause of disability in young adults",
+          "detail": "Because MS begins in early adulthood, its impact on work, family and independence can span decades.",
+          "narration": "Because it strikes people so early in life, multiple sclerosis is one of the leading causes of non traumatic disability in young adults."
+        }
       ],
       "stat": {
         "value": "2.9M",
         "label": "people living with MS worldwide"
       },
-      "speakerNotes": "Multiple sclerosis is a chronic immune mediated disease of the central nervous system, in which the immune system attacks myelin and nerve fibres in the brain, spinal cord and optic nerves. Around two point nine million people live with it worldwide. It is usually diagnosed in early adulthood, at an average age of about thirty two, and women are affected roughly twice as often as men. Because it strikes people in their working and family building years, it is one of the leading causes of non traumatic disability in young adults.",
       "keywords": [
         "burden",
         "prevalence",
@@ -44,14 +60,30 @@
       "index": 1,
       "title": "Recognising early MS",
       "kicker": "Early signs",
-      "bullets": [
-        "Optic neuritis: painful, blurred vision in one eye",
-        "Numbness, tingling or weakness in limbs or trunk",
-        "Double vision, vertigo or imbalance",
-        "Symptoms evolving over days and lasting more than 24 hours"
+      "intro": "Earlier diagnosis begins with recognising the first event, often called a clinically isolated syndrome.",
+      "points": [
+        {
+          "text": "Optic neuritis: painful, blurred vision in one eye",
+          "detail": "Typical optic neuritis causes pain on eye movement and blurred vision in one eye.",
+          "narration": "One classic presentation is optic neuritis, with pain when moving the eye and blurred vision in one eye, building up over hours to days."
+        },
+        {
+          "text": "Numbness, tingling or weakness in limbs or trunk",
+          "detail": "A partial spinal cord syndrome can cause numbness, tingling, weakness or a band-like sensation around the trunk.",
+          "narration": "Another is a partial spinal cord syndrome, with numbness, tingling or weakness in the limbs, or a band like sensation around the trunk."
+        },
+        {
+          "text": "Double vision, vertigo or imbalance",
+          "detail": "Brainstem symptoms are a third classic pattern. Fatigue, bladder urgency and heat sensitivity are also common.",
+          "narration": "Brainstem symptoms such as double vision, vertigo and imbalance are a third pattern. Fatigue, bladder urgency and heat sensitivity are common too."
+        },
+        {
+          "text": "Symptoms evolving over days and lasting more than 24 hours",
+          "detail": "Prompt neurology referral for a suspected first demyelinating event is the biggest single step toward earlier diagnosis.",
+          "narration": "These symptoms typically last more than a day. Prompt referral to neurology for any suspected first demyelinating event is the single biggest step toward earlier diagnosis."
+        }
       ],
       "stat": null,
-      "speakerNotes": "The first event is often called a clinically isolated syndrome. Classic presentations include optic neuritis, with pain on eye movement and blurred vision in one eye, a partial spinal cord syndrome with numbness, tingling or a band like sensation around the trunk, or brainstem symptoms such as double vision and vertigo. These typically build over hours to days and last more than a day. Fatigue, bladder urgency and heat sensitivity are also common. Prompt referral to neurology for anyone with a suspected first demyelinating event is the single biggest step toward earlier diagnosis.",
       "keywords": [
         "symptoms",
         "early signs",
@@ -70,14 +102,30 @@
       "index": 2,
       "title": "Making the diagnosis",
       "kicker": "Diagnosis",
-      "bullets": [
-        "2024 McDonald criteria: optic nerve added as a fifth region",
-        "Dissemination in time no longer always required",
-        "Supportive markers: central vein sign, kappa free light chains",
-        "Exclude mimics: misdiagnosis remains common"
+      "intro": "Once a patient reaches neurology, the diagnostic criteria have recently changed in important ways.",
+      "points": [
+        {
+          "text": "2024 McDonald criteria: optic nerve added as a fifth region",
+          "detail": "MRI of the brain, spinal cord and optic nerves is central, and the optic nerve now counts as a fifth typical region.",
+          "narration": "Diagnosis now follows the twenty twenty four revision of the McDonald criteria. MRI is central, and the optic nerve is now counted as a fifth typical region."
+        },
+        {
+          "text": "Dissemination in time no longer always required",
+          "detail": "Evidence of lesions at different points in time is not always needed, so many people can be diagnosed at their first attack.",
+          "narration": "Evidence of lesions at different points in time is no longer always required, so many people can now be diagnosed at their very first attack."
+        },
+        {
+          "text": "Supportive markers: central vein sign, kappa free light chains",
+          "detail": "Spinal fluid oligoclonal bands or kappa free light chains support diagnosis; central vein sign and rim lesions help on MRI.",
+          "narration": "Oligoclonal bands or kappa free light chains in the spinal fluid support the diagnosis, and the central vein sign and paramagnetic rim lesions on MRI help separate MS from its mimics."
+        },
+        {
+          "text": "Exclude mimics: misdiagnosis remains common",
+          "detail": "Even with new markers, carefully excluding alternative diagnoses remains an essential part of every work-up.",
+          "narration": "Even with these new tools, carefully excluding the conditions that mimic multiple sclerosis remains essential, because misdiagnosis still happens in practice."
+        }
       ],
       "stat": null,
-      "speakerNotes": "Diagnosis now follows the twenty twenty four revision of the McDonald criteria. MRI of the brain, spinal cord and optic nerves is central, and the optic nerve is now counted as a fifth typical region. Evidence of lesions at different points in time is no longer always required, so many people can be diagnosed at their first attack. Oligoclonal bands or kappa free light chains in the spinal fluid support the diagnosis, and the central vein sign and paramagnetic rim lesions on MRI help separate MS from its mimics. Excluding those mimics remains essential, because misdiagnosis still happens.",
       "keywords": [
         "diagnosis",
         "McDonald 2024",
@@ -96,14 +144,30 @@
       "index": 3,
       "title": "The hidden progression",
       "kicker": "Disease biology",
-      "bullets": [
-        "Damage continues between relapses, often silently",
-        "Most disability worsening occurs independent of relapses (PIRA)",
-        "Brain volume loss starts early in the disease",
-        "Relapse counts alone underestimate disease activity"
+      "intro": "One of the most important shifts in our understanding is that MS is active even when patients feel well.",
+      "points": [
+        {
+          "text": "Damage continues between relapses, often silently",
+          "detail": "New MRI lesions can accumulate without any new symptoms, even while a patient feels well.",
+          "narration": "Between relapses, damage often continues silently. New lesions can appear on MRI without the patient noticing any new symptoms at all."
+        },
+        {
+          "text": "Most disability worsening occurs independent of relapses (PIRA)",
+          "detail": "In pooled analyses of relapsing MS trials, most confirmed disability worsening happened without any preceding relapse.",
+          "narration": "In large analyses of relapsing MS trials, most confirmed disability worsening happened without any preceding relapse. Neurologists call this progression independent of relapse activity."
+        },
+        {
+          "text": "Brain volume loss starts early in the disease",
+          "detail": "Brain volume loss and silent new lesions can accumulate from the earliest stages of MS.",
+          "narration": "Brain volume loss can also accumulate from the earliest stages of the disease, alongside those silent new lesions on MRI."
+        },
+        {
+          "text": "Relapse counts alone underestimate disease activity",
+          "detail": "Structured monitoring includes regular MRI and careful assessment of walking, hand function and cognition.",
+          "narration": "So counting relapses alone underestimates disease activity. Structured monitoring, including regular MRI and careful assessment of subtle changes in walking, hand function and cognition, is essential."
+        }
       ],
       "stat": null,
-      "speakerNotes": "One of the most important shifts in our understanding is that MS is active even when patients feel well. In large analyses of relapsing MS trials, most confirmed disability worsening happened without any preceding relapse. Neurologists call this progression independent of relapse activity. Brain volume loss and silent new MRI lesions can accumulate from the earliest stages. The practical message is that counting relapses alone underestimates disease activity, and that structured monitoring, including regular MRI and careful assessment of subtle changes in walking, hand function and cognition, is essential.",
       "keywords": [
         "progression",
         "PIRA",
@@ -123,14 +187,30 @@
       "index": 4,
       "title": "Why early treatment matters",
       "kicker": "Treatment strategy",
-      "bullets": [
-        "Disease-modifying therapies reduce relapses and new lesions",
-        "Injectable, oral and high-efficacy monoclonal antibody options",
-        "Earlier high-efficacy therapy linked to less long-term disability",
-        "Shared decisions balance efficacy, safety and life plans"
+      "intro": "Because damage begins early, the window for protecting the brain is early too.",
+      "points": [
+        {
+          "text": "Disease-modifying therapies reduce relapses and new lesions",
+          "detail": "Disease-modifying therapies reduce both clinical relapses and new lesions seen on MRI.",
+          "narration": "Disease modifying therapies reduce both relapses and the new lesions we see on MRI, and they are the foundation of long term management."
+        },
+        {
+          "text": "Injectable, oral and high-efficacy monoclonal antibody options",
+          "detail": "The options now range from injectable therapies, to oral medicines, to high-efficacy monoclonal antibodies.",
+          "narration": "The options now range from injectable therapies, to oral medicines, to high efficacy monoclonal antibodies, so there is real choice for each patient."
+        },
+        {
+          "text": "Earlier high-efficacy therapy linked to less long-term disability",
+          "detail": "Registry data suggest starting high-efficacy therapy within the first two years is associated with less disability years later.",
+          "narration": "Observational data from large registries suggest that starting a high efficacy therapy within the first two years is associated with less disability years later, compared with starting it later."
+        },
+        {
+          "text": "Shared decisions balance efficacy, safety and life plans",
+          "detail": "Choices weigh efficacy, safety, monitoring needs, comorbidities and plans such as pregnancy.",
+          "narration": "The right choice is always individual, weighing efficacy, safety, monitoring needs, other conditions, and plans such as pregnancy, in a shared decision with the patient."
+        }
       ],
       "stat": null,
-      "speakerNotes": "Because damage begins early, the window for protecting the brain is early too. Disease modifying therapies reduce relapses and new MRI lesions, and the options now range from injectable therapies, to oral medicines, to high efficacy monoclonal antibodies. Observational data from large registries suggest that starting a high efficacy therapy within the first two years is associated with less disability years later, compared with starting it later in the disease. The right choice is always individual, weighing efficacy, safety, monitoring needs, comorbidities and plans such as pregnancy.",
       "keywords": [
         "treatment",
         "disease-modifying therapy",
@@ -150,14 +230,30 @@
       "index": 5,
       "title": "Monitoring and partnership",
       "kicker": "Long-term care",
-      "bullets": [
-        "Baseline and at least annual MRI on treatment",
-        "Check infections and update vaccines before starting treatment",
-        "Address smoking, vitamin D, exercise and mental health",
-        "Multidisciplinary care and patient support improve adherence"
+      "intro": "Finally, good outcomes depend on what happens after the first prescription.",
+      "points": [
+        {
+          "text": "Baseline and at least annual MRI on treatment",
+          "detail": "A fresh baseline MRI after starting treatment, then at least yearly scans, detect silent activity and guide switching decisions.",
+          "narration": "A fresh baseline MRI after starting treatment, and at least annual scans after that, help detect silent activity and guide decisions about switching therapy."
+        },
+        {
+          "text": "Check infections and update vaccines before starting treatment",
+          "detail": "Before immune therapies, screen for infections such as hepatitis B and bring vaccinations up to date.",
+          "narration": "Before starting immune therapies, it is important to screen for infections such as hepatitis B, and to bring vaccinations up to date."
+        },
+        {
+          "text": "Address smoking, vitamin D, exercise and mental health",
+          "detail": "Stopping smoking, staying active, optimising vitamin D and supporting mental health all contribute to outcomes.",
+          "narration": "Lifestyle matters too. Stopping smoking, staying active, optimising vitamin D and supporting mental health all contribute to better long term outcomes."
+        },
+        {
+          "text": "Multidisciplinary care and patient support improve adherence",
+          "detail": "Specialist nurses, rehabilitation services and patient support programmes help people stay on treatment.",
+          "narration": "A multidisciplinary team, including specialist nurses, rehabilitation and patient support programmes, helps people stay on treatment. I am happy to share the underlying publications on any of these points."
+        }
       ],
       "stat": null,
-      "speakerNotes": "Good outcomes depend on what happens after the first prescription. A fresh baseline MRI after starting treatment and at least annual scans help detect silent activity and guide decisions about switching therapy. Before immune therapies, screening for infections such as hepatitis B and updating vaccinations are important. Lifestyle matters too. Stopping smoking, staying active, optimising vitamin D and supporting mental health all contribute. Finally, a multidisciplinary team, including specialist nurses, rehabilitation and patient support programmes, helps people stay on treatment. I am happy to share the underlying publications on any of these points.",
       "keywords": [
         "monitoring",
         "MRI",
