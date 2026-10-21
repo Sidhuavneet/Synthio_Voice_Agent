@@ -8,6 +8,7 @@ from datetime import timedelta
 from livekit import api
 
 from synthio_backend.core.config import Settings
+from synthio_backend.session.resume import ResumeState
 
 TOKEN_TTL = timedelta(minutes=15)
 PARTICIPANT_NAME = "Guest"
@@ -30,11 +31,17 @@ def _short_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def dispatch_metadata(deck_id: str) -> str:
-    return json.dumps({"deckId": deck_id}, separators=(",", ":"))
+def dispatch_metadata(deck_id: str, resume: ResumeState | None) -> str:
+    payload = {
+        "deckId": deck_id,
+        "resume": None if resume is None else resume.model_dump(by_alias=True),
+    }
+    return json.dumps(payload, separators=(",", ":"))
 
 
-def create_session_credentials(settings: Settings, deck_id: str) -> SessionCredentials:
+def create_session_credentials(
+    settings: Settings, deck_id: str, resume: ResumeState | None = None
+) -> SessionCredentials:
     url, key, secret = settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret
     if not (url and key and secret and secret.get_secret_value()):
         raise LiveKitNotConfiguredError
@@ -61,7 +68,7 @@ def create_session_credentials(settings: Settings, deck_id: str) -> SessionCrede
                 agents=[
                     api.RoomAgentDispatch(
                         agent_name=settings.agent_name,
-                        metadata=dispatch_metadata(deck_id),
+                        metadata=dispatch_metadata(deck_id, resume),
                     )
                 ]
             )
