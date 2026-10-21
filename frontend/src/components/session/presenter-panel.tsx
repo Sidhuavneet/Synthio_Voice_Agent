@@ -1,6 +1,6 @@
 "use client";
 
-import { BarVisualizer, useAgent } from "@livekit/components-react";
+import { BarVisualizer, useAgent, type ReceivedMessage } from "@livekit/components-react";
 import { AgentStatus } from "@/components/session/agent-status";
 import { Transcript } from "@/components/session/transcript";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,12 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-export function PresenterPanel({ presenter }: { presenter: Presenter }) {
+export interface PresenterPanelProps {
+  presenter: Presenter;
+  messages: ReceivedMessage[];
+}
+
+export function PresenterPanel({ presenter, messages }: PresenterPanelProps) {
   const agent = useAgent();
 
   return (
@@ -47,7 +52,7 @@ export function PresenterPanel({ presenter }: { presenter: Presenter }) {
           />
         </div>
       </div>
-      <Transcript presenterName={presenter.name} />
+      <Transcript presenterName={presenter.name} messages={messages} />
     </Card>
   );
 }

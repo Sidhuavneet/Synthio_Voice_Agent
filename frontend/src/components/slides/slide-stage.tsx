@@ -1,5 +1,8 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
+import type { HighlightTarget } from "@/lib/bullet-match";
+import { cn } from "@/lib/cn";
+import type { Citation } from "@/lib/deck";
 import type { Slide } from "@/lib/types";
 
 export type PresenterStatus = "connecting" | "live" | "unavailable";
@@ -9,9 +12,19 @@ export interface SlideStageProps {
   slide: Slide;
   total: number;
   presenterStatus: PresenterStatus;
+  /** The bullet or stat being spoken right now, if known. */
+  highlight: HighlightTarget | null;
+  citations: Citation[];
 }
 
-export function SlideStage({ deckTitle, slide, total, presenterStatus }: SlideStageProps) {
+export function SlideStage({
+  deckTitle,
+  slide,
+  total,
+  presenterStatus,
+  highlight,
+  citations,
+}: SlideStageProps) {
   const position = `Slide ${slide.index + 1} of ${total}`;
   return (
     <section
@@ -50,21 +63,40 @@ export function SlideStage({ deckTitle, slide, total, presenterStatus }: SlideSt
             <h2 className="text-2xl font-semibold tracking-tight text-balance text-ink sm:text-3xl xl:text-4xl">
               {slide.title}
             </h2>
-            <ul className="space-y-3">
-              {slide.bullets.map((bullet) => (
-                <li key={bullet} className="flex gap-3 text-base text-ink-soft xl:text-lg">
-                  <span
-                    aria-hidden
-                    className="mt-2.5 size-1.5 shrink-0 rounded-full bg-accent xl:mt-3"
-                  />
-                  <span className="text-pretty">{bullet}</span>
-                </li>
-              ))}
+            <ul className="-mx-3 space-y-1">
+              {slide.bullets.map((bullet, i) => {
+                const active = highlight?.kind === "bullet" && highlight.index === i;
+                return (
+                  <li
+                    key={bullet}
+                    data-highlighted={active || undefined}
+                    className={cn(
+                      "flex gap-3 rounded-xl px-3 py-1.5 text-base transition-colors duration-500 ease-out xl:text-lg",
+                      active ? "bg-accent-soft text-ink" : "text-ink-soft",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "mt-2.5 size-1.5 shrink-0 rounded-full bg-accent transition-transform duration-500 xl:mt-3",
+                        active && "scale-150",
+                      )}
+                    />
+                    <span className="text-pretty">{bullet}</span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
           {slide.stat && (
-            <aside className="rounded-2xl bg-[linear-gradient(135deg,var(--color-navy),var(--color-accent)_60%,var(--color-violet))] p-6 text-white xl:w-64 xl:shrink-0">
+            <aside
+              data-highlighted={highlight?.kind === "stat" || undefined}
+              className={cn(
+                "rounded-2xl bg-[linear-gradient(135deg,var(--color-navy),var(--color-accent)_60%,var(--color-violet))] p-6 text-white ring-accent-light/70 ring-offset-2 ring-offset-surface transition-[box-shadow,transform] duration-500 ease-out xl:w-64 xl:shrink-0",
+                highlight?.kind === "stat" && "scale-[1.02] ring-4",
+              )}
+            >
               <p className="text-4xl font-semibold tracking-tight xl:text-5xl">
                 {slide.stat.value}
               </p>
@@ -72,6 +104,20 @@ export function SlideStage({ deckTitle, slide, total, presenterStatus }: SlideSt
             </aside>
           )}
         </div>
+
+        {citations.length > 0 && (
+          <footer className="mt-6 border-t border-line pt-3 text-xs text-ink-muted">
+            <h3 className="sr-only">Sources</h3>
+            <ol className="space-y-0.5">
+              {citations.map((citation) => (
+                <li key={citation.id} className="flex gap-1.5">
+                  <span className="shrink-0 font-medium tabular-nums">[{citation.id + 1}]</span>
+                  <span className="text-pretty">{citation.text}</span>
+                </li>
+              ))}
+            </ol>
+          </footer>
+        )}
       </div>
     </section>
   );
