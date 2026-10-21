@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { Slide } from "@/lib/types";
@@ -6,6 +6,8 @@ import type { Slide } from "@/lib/types";
 export interface SlideRailProps {
   slides: Slide[];
   currentIndex: number;
+  /** Slides already fully presented (`slide.presented`). */
+  presented: number[];
   pendingIndex: number | null;
   disabled: boolean;
   onSelect: (index: number) => void;
@@ -14,10 +16,12 @@ export interface SlideRailProps {
 export function SlideRail({
   slides,
   currentIndex,
+  presented,
   pendingIndex,
   disabled,
   onSelect,
 }: SlideRailProps) {
+  const done = new Set(presented);
   const busy = disabled || pendingIndex !== null;
   const lastIndex = slides.length - 1;
 
@@ -37,12 +41,13 @@ export function SlideRail({
         {slides.map((slide) => {
           const isCurrent = slide.index === currentIndex;
           const isPending = slide.index === pendingIndex;
+          const isDone = done.has(slide.index);
           return (
             <li key={slide.index} className="min-w-0 flex-1 basis-10 sm:basis-24">
               <button
                 type="button"
                 aria-current={isCurrent ? "step" : undefined}
-                aria-label={`Go to slide ${slide.index + 1}: ${slide.title}`}
+                aria-label={`Go to slide ${slide.index + 1}: ${slide.title}${isDone ? " (covered)" : ""}`}
                 title={slide.title}
                 disabled={busy || isCurrent}
                 onClick={() => onSelect(slide.index)}
@@ -57,7 +62,7 @@ export function SlideRail({
                   aria-hidden
                   className={cn(
                     "h-1 w-full rounded-full",
-                    slide.index <= currentIndex ? "bg-accent" : "bg-line",
+                    isDone || slide.index === currentIndex ? "bg-accent" : "bg-line",
                   )}
                 />
                 <span className="flex items-center gap-1.5 text-xs font-medium">
@@ -66,7 +71,11 @@ export function SlideRail({
                   >
                     {String(slide.index + 1).padStart(2, "0")}
                   </span>
-                  {isPending && <Loader2 aria-hidden className="size-3 animate-spin text-accent" />}
+                  {isPending ? (
+                    <Loader2 aria-hidden className="size-3 shrink-0 animate-spin text-accent" />
+                  ) : (
+                    isDone && <Check aria-hidden className="size-3 shrink-0 text-success" />
+                  )}
                   <span
                     className={cn(
                       "hidden truncate sm:inline",

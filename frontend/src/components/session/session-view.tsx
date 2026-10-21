@@ -10,10 +10,9 @@ import {
 } from "@livekit/components-react";
 import { ArrowLeft } from "lucide-react";
 import { SessionReportView } from "@/components/report/session-report-view";
-import { CompliancePanel } from "@/components/session/compliance-panel";
 import { ComplianceToast } from "@/components/session/compliance-toast";
 import { ControlBar } from "@/components/session/control-bar";
-import { LatencyPanel } from "@/components/session/latency-panel";
+import { InsightsCard } from "@/components/session/insights-card";
 import { PresenterPanel } from "@/components/session/presenter-panel";
 import { StartAudioPrompt } from "@/components/session/start-audio-prompt";
 import { SlideRail } from "@/components/slides/slide-rail";
@@ -21,19 +20,24 @@ import { SlideStage, type PresenterStatus } from "@/components/slides/slide-stag
 import { Alert } from "@/components/ui/alert";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useAgentEvents, type AgentEvents } from "@/hooks/use-agent-events";
 import { useAgentSession, type AgentSessionError } from "@/hooks/use-agent-session";
-import { useBulletHighlight } from "@/hooks/use-bullet-highlight";
+import { useDeckProgress } from "@/hooks/use-deck-progress";
 import { useSessionReport } from "@/hooks/use-session-report";
 import { useSlideNavigation } from "@/hooks/use-slide-navigation";
 import { useSlideSync, type SlideSync } from "@/hooks/use-slide-sync";
 import { useSlideTimeline } from "@/hooks/use-slide-timeline";
 import type { Presentation } from "@/hooks/use-start-presentation";
 import { getSlideCitations } from "@/lib/deck";
-import type { Deck, SessionFacts } from "@/lib/types";
+import type { Deck, SessionErrorCode, SessionFacts } from "@/lib/types";
 
 const BACK_LABEL = "Back to decks";
+
+const SESSION_ERROR_TITLES: Record<SessionErrorCode, string> = {
+  quota_exceeded: "Voice service limit reached",
+  provider_error: "Voice service unavailable",
+  internal: "The presenter stopped unexpectedly",
+};
 
 export interface SessionViewProps {
   presentation: Presentation;
@@ -64,7 +68,8 @@ interface SessionScreenProps {
 
 /** Owns state that outlives the live session (events, slide timeline); swaps in the report. */
 function SessionScreen({ deck, ...props }: SessionScreenProps) {
-  const sync = useSlideSync(deck.id, deck.slides.length);
+  const sync = useSlideSync(deck);
+  useDeckProgress(deck.id, deck.slides.length, sync);
   const events = useAgentEvents();
   const getTimeline = useSlideTimeline(deck.slides, sync.index, sync.isSynced);
   const { complianceFlags } = events;
@@ -113,17 +118,23 @@ function SessionLayout({
   const { messages } = useSessionMessages(session);
   const { index, isSynced } = sync;
   const slide = deck.slides[index];
-  const highlight = useBulletHighlight(slide, messages);
   const navigation = useSlideNavigation();
   const [wasConnected, setWasConnected] = useState(false);
+  const [agentWasConnected, setAgentWasConnected] = useState(false);
 
   if (session.isConnected && !wasConnected) setWasConnected(true);
+  if (agent.isConnected && !agentWasConnected) setAgentWasConnected(true);
+  const agentError = events.sessionError;
   const droppedConnection = wasConnected && !session.isConnected;
   const connectionFailed = sessionError?.kind === "connection";
-  const agentFailed = agent.state === "failed" && !connectionFailed;
+  // The agent's own error report explains its departure better than useAgent's failure.
+  const agentFailed = agent.state === "failed" && !connectionFailed && !agentError;
   const presenterStatus: PresenterStatus =
-    agent.state === "failed" || connectionFailed || droppedConnection
-      ? "unavailable" : isSynced ? "live" : "connecting";
+    agent.state === "failed" || connectionFailed || droppedConnection || agentError
+      ? "unavailable"
+      : isSynced
+        ? "live"
+        : "connecting";
 
   const backAction = (
     <Button variant="secondary" size="sm" onClick={onExit}>
@@ -137,19 +148,34 @@ function SessionLayout({
     // lg:flex-none stops the body's flex column from overriding h-dvh with content height.
     <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-5 px-4 py-4 sm:px-6 lg:h-dvh lg:min-h-0 lg:flex-none lg:py-6">
       <header className="flex shrink-0 items-center justify-between gap-4">
-        <BrandMark />
+        <Button variant="ghost" size="sm" className="-ml-3" onClick={onExit}>
+          <ArrowLeft aria-hidden />
+          All decks
+        </Button>
         <h1 className="sr-only">{deck.title}</h1>
+        <BrandMark />
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_380px]">
         <main className="flex min-w-0 flex-col gap-4 lg:min-h-0 lg:overflow-y-auto">
-          {agentFailed && (
-            <Alert title="The presenter couldn't join" action={backAction}>
-              {agent.failureReasons.join(" ")} Make sure the agent worker is running (uv run
-              synthio-agent dev).
+          {agentError && (
+            <Alert title={SESSION_ERROR_TITLES[agentError.code]} action={backAction}>
+              {agentError.message}
             </Alert>
           )}
-          {droppedConnection && agent.state !== "failed" && !connectionFailed && (
+          {agentFailed &&
+            (agentWasConnected ? (
+              <Alert title="Presenter disconnected" action={backAction}>
+                The presenter left the session unexpectedly. Your progress is saved, so you can
+                resume from the deck list.
+              </Alert>
+            ) : (
+              <Alert title="The presenter couldn't join" action={backAction}>
+                {agent.failureReasons.join(" ")} Make sure the agent worker is running (uv run
+                synthio-agent dev).
+              </Alert>
+            ))}
+          {droppedConnection && agent.state !== "failed" && !connectionFailed && !agentError && (
             <Alert title="Session ended" action={backAction}>
               The connection to the presentation room was closed.
             </Alert>
@@ -170,13 +196,14 @@ function SessionLayout({
             slide={slide}
             total={deck.slides.length}
             presenterStatus={presenterStatus}
-            highlight={isSynced ? highlight : null}
+            activePoint={sync.pointIndex}
             citations={getSlideCitations(deck, slide)}
           />
 
           <SlideRail
             slides={deck.slides}
             currentIndex={index}
+            presented={sync.presented}
             pendingIndex={navigation.pendingIndex}
             disabled={!navigation.canNavigate}
             onSelect={(target) => void navigation.navigate(target)}
@@ -191,7 +218,6 @@ function SessionLayout({
             <StartAudioPrompt />
             <ControlBar
               onEndWithReport={onEndWithReport}
-              onLeave={onExit}
               onMicrophoneError={onMicrophoneError}
             />
             <p className="text-center text-xs text-ink-muted sm:text-left">{deck.disclaimer}</p>
@@ -199,17 +225,11 @@ function SessionLayout({
         </main>
 
         <aside className="flex min-h-0 flex-col gap-4">
+          {/* The presenter card takes all remaining height; the insights card never grows. */}
           <div className="flex h-[28rem] min-h-0 flex-col lg:h-auto lg:flex-1">
             <PresenterPanel presenter={deck.presenter} messages={messages} />
           </div>
-          <Card className="flex shrink-0 flex-col divide-y divide-line">
-            <div className="p-5">
-              <LatencyPanel latency={events.latency} />
-            </div>
-            <div className="p-5">
-              <CompliancePanel flags={events.complianceFlags} />
-            </div>
-          </Card>
+          <InsightsCard latency={events.latency} complianceFlags={events.complianceFlags} />
         </aside>
       </div>
     </div>

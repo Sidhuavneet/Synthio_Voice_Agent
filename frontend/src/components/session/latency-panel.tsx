@@ -1,4 +1,3 @@
-import { Gauge } from "lucide-react";
 import type { LatencyStats } from "@/hooks/use-agent-events";
 import { cn } from "@/lib/cn";
 import { formatLatency } from "@/lib/format";
@@ -38,29 +37,22 @@ export function LatencyPanel({ latency }: { latency: LatencyStats }) {
     : 0;
 
   return (
-    <section aria-labelledby="latency-heading" className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2
-          id="latency-heading"
-          className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-ink-muted uppercase"
-        >
-          <Gauge aria-hidden className="size-3.5" />
-          Response latency
-        </h2>
-        {averageTotalMs !== null && (
-          <span className="text-xs text-ink-muted tabular-nums">
-            avg {formatLatency(averageTotalMs)} · {turnCount} {turnCount === 1 ? "turn" : "turns"}
-          </span>
-        )}
-      </div>
-
+    <div className="space-y-3">
       {latest ? (
         <div className="space-y-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-semibold tracking-tight text-ink tabular-nums">
-              {formatLatency(latest.totalMs)}
-            </span>
-            <span className="text-xs text-ink-muted">last reply</span>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-semibold tracking-tight text-ink tabular-nums">
+                {formatLatency(latest.totalMs)}
+              </span>
+              <span className="text-xs text-ink-muted">last reply</span>
+            </div>
+            {averageTotalMs !== null && (
+              <span className="text-xs text-ink-muted tabular-nums">
+                avg {formatLatency(averageTotalMs)} · {turnCount}{" "}
+                {turnCount === 1 ? "turn" : "turns"}
+              </span>
+            )}
           </div>
           {segmentTotal > 0 && (
             <div aria-hidden className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-canvas">
@@ -94,6 +86,6 @@ export function LatencyPanel({ latency }: { latency: LatencyStats }) {
       ) : (
         <p className="text-sm text-ink-muted">Measured after the presenter&apos;s first reply.</p>
       )}
-    </section>
+    </div>
   );
 }

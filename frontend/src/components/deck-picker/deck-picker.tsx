@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { DeckCard } from "@/components/deck-picker/deck-card";
@@ -9,14 +9,23 @@ import {
   DecksError,
   EmptyDecks,
 } from "@/components/deck-picker/deck-picker-states";
+import { ResumeDialog } from "@/components/deck-picker/resume-dialog";
 import { useDecks } from "@/hooks/use-decks";
 import type { StartError } from "@/hooks/use-start-presentation";
+import { resumeSlideIndex, toResumeRequest, type DeckProgress } from "@/lib/progress";
+import type { DeckSummary, ResumeRequest } from "@/lib/types";
 
 export interface DeckPickerProps {
   pendingDeckId: string | null;
   startError: StartError | null;
-  onStart: (deckId: string) => void;
+  /** `resume` is null for a fresh start (which discards saved progress). */
+  onStart: (deckId: string, resume: ResumeRequest | null) => void;
   onDismissError: () => void;
+}
+
+interface ResumeChoice {
+  deck: DeckSummary;
+  progress: DeckProgress;
 }
 
 export function DeckPicker({
@@ -27,6 +36,19 @@ export function DeckPicker({
 }: DeckPickerProps) {
   const { state, reload } = useDecks();
   const errorRef = useRef<HTMLDivElement>(null);
+  const [resumeChoice, setResumeChoice] = useState<ResumeChoice | null>(null);
+
+  const handleStart = (deck: DeckSummary, progress: DeckProgress | null) => {
+    if (progress) setResumeChoice({ deck, progress });
+    else onStart(deck.id, null);
+  };
+
+  const choose = (resume: boolean) => {
+    if (!resumeChoice) return;
+    const { deck, progress } = resumeChoice;
+    setResumeChoice(null);
+    onStart(deck.id, resume ? toResumeRequest(progress, deck.slideCount) : null);
+  };
 
   // The failing card can be far below the alert on small screens.
   useEffect(() => {
@@ -80,12 +102,23 @@ export function DeckPicker({
                 featured={i === 0}
                 pending={pendingDeckId === deck.id}
                 disabled={pendingDeckId !== null}
-                onStart={onStart}
+                onStart={handleStart}
               />
             ))}
           </div>
         )}
       </section>
+
+      {resumeChoice && (
+        <ResumeDialog
+          deck={resumeChoice.deck}
+          progress={resumeChoice.progress}
+          resumeIndex={resumeSlideIndex(resumeChoice.progress, resumeChoice.deck.slideCount)}
+          onResume={() => choose(true)}
+          onStartOver={() => choose(false)}
+          onCancel={() => setResumeChoice(null)}
+        />
+      )}
     </div>
   );
 }

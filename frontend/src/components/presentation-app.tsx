@@ -5,14 +5,19 @@ import { DeckPicker } from "@/components/deck-picker/deck-picker";
 import { SessionView } from "@/components/session/session-view";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { useStartPresentation, type Presentation } from "@/hooks/use-start-presentation";
+import { clearProgress } from "@/lib/progress";
+import type { ResumeRequest } from "@/lib/types";
 
 export function PresentationApp() {
   const [presentation, setPresentation] = useState<Presentation | null>(null);
   const { start, pendingDeckId, error, dismissError } = useStartPresentation();
 
-  const handleStart = async (deckId: string) => {
-    const result = await start(deckId);
-    if (result) setPresentation(result);
+  const handleStart = async (deckId: string, resume: ResumeRequest | null) => {
+    const result = await start(deckId, resume ?? undefined);
+    if (!result) return;
+    // Starting over discards saved progress, but only once the new session is ready.
+    if (!resume) clearProgress(deckId);
+    setPresentation(result);
   };
 
   if (presentation) {
@@ -34,7 +39,7 @@ export function PresentationApp() {
         <DeckPicker
           pendingDeckId={pendingDeckId}
           startError={error}
-          onStart={(deckId) => void handleStart(deckId)}
+          onStart={(deckId, resume) => void handleStart(deckId, resume)}
           onDismissError={dismissError}
         />
       </main>

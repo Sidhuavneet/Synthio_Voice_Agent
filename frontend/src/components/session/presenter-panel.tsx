@@ -26,7 +26,7 @@ export function PresenterPanel({ presenter, messages }: PresenterPanelProps) {
 
   return (
     <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 space-y-5 border-b border-line p-5">
+      <div className="shrink-0 space-y-4 border-b border-line p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span
@@ -42,7 +42,7 @@ export function PresenterPanel({ presenter, messages }: PresenterPanelProps) {
           </div>
           <AgentStatus state={agent.state} />
         </div>
-        <div aria-hidden className="h-16 rounded-xl bg-canvas py-3">
+        <div aria-hidden className="h-12 rounded-xl bg-canvas py-2.5">
           <BarVisualizer
             state={agent.state}
             track={agent.microphoneTrack}
