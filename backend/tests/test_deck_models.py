@@ -62,3 +62,19 @@ def test_rejects_invalid_id(deck_data: dict[str, Any]) -> None:
     deck_data["id"] = "Not A Slug"
     with pytest.raises(ValidationError):
         Deck.model_validate(deck_data)
+
+
+def test_source_ids_default_to_empty(deck: Deck) -> None:
+    assert deck.slides[0].source_ids == []
+
+
+def test_accepts_source_ids_in_range(deck_data: dict[str, Any]) -> None:
+    deck_data["slides"][0]["sourceIds"] = [0]
+    assert Deck.model_validate(deck_data).slides[0].source_ids == [0]
+
+
+@pytest.mark.parametrize("source_id", [-1, 1])
+def test_rejects_source_ids_out_of_range(deck_data: dict[str, Any], source_id: int) -> None:
+    deck_data["slides"][2]["sourceIds"] = [source_id]
+    with pytest.raises(ValidationError, match="sourceIds"):
+        Deck.model_validate(deck_data)

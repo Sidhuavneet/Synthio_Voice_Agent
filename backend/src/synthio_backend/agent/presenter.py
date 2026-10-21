@@ -4,25 +4,40 @@ import logging
 
 from livekit.agents import Agent, RunContext, ToolError, function_tool
 
+from synthio_backend.agent.events import ComplianceCategory, EventSink
 from synthio_backend.agent.prompts import (
     build_instructions,
+    compliance_tool_result,
     interrupted_tool_result,
     jump_tool_result,
     navigation_instructions,
     opening_instructions,
     slide_tool_result,
 )
+from synthio_backend.agent.session_log import SessionLog
 from synthio_backend.agent.slides import SlideController, SlideIndexError
 from synthio_backend.decks.models import Deck
 
 logger = logging.getLogger(__name__)
 
+# Headroom over one next_slide call per slide so a full presentation can chain without
+# hitting the per-turn tool step limit.
+_EXTRA_TOOL_STEPS = 2
+
+
+def max_tool_steps(slide_count: int) -> int:
+    return slide_count + _EXTRA_TOOL_STEPS
+
 
 class PresenterAgent(Agent):
-    def __init__(self, deck: Deck, slides: SlideController) -> None:
+    def __init__(
+        self, deck: Deck, slides: SlideController, log: SessionLog, events: EventSink
+    ) -> None:
         super().__init__(instructions=build_instructions(deck))
         self._deck = deck
         self._slides = slides
+        self._log = log
+        self._events = events
 
     async def on_enter(self) -> None:
         self.session.generate_reply(instructions=opening_instructions(self._deck))
@@ -73,5 +88,21 @@ class PresenterAgent(Agent):
             await self._slides.go_to(index)
         except SlideIndexError as exc:
             raise ToolError(str(exc)) from exc
+        self._log.route_latest_turn(index)
         logger.info("jumped to slide %d: %s", index, reason)
         return jump_tool_result(self._deck.slides[index], self._slides.slide_count)
+
+    @function_tool
+    async def flag_compliance(self, category: ComplianceCategory, question: str) -> str:
+        """Record a compliance issue. Call this first, before replying, whenever the user asks
+        about off-label use, asks for personal medical advice, reports an adverse event, or
+        asks something outside the topic of this talk.
+
+        Args:
+            category: off_label, personal_medical_advice, adverse_event or out_of_scope.
+            question: The user's message, close to verbatim.
+        """
+        flag = self._log.add_flag(category, question, self._slides.index)
+        self._events.publish(flag)
+        logger.info("compliance flag %s: %s", category, flag.id)
+        return compliance_tool_result(category)

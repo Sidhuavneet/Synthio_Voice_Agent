@@ -1,0 +1,65 @@
+"""Agent -> frontend events, sent as reliable data packets (see docs/CONTRACT.md section 5)."""
+
+import asyncio
+import logging
+from typing import Literal, Protocol
+
+from livekit import rtc
+
+from synthio_backend.agent.protocol import EVENTS_TOPIC
+from synthio_backend.decks.models import CamelModel
+
+logger = logging.getLogger(__name__)
+
+ComplianceCategory = Literal[
+    "off_label", "personal_medical_advice", "adverse_event", "out_of_scope"
+]
+
+
+class ComplianceFlagEvent(CamelModel):
+    type: Literal["compliance_flag"] = "compliance_flag"
+    id: str
+    category: ComplianceCategory
+    question: str
+    slide_index: int
+    timestamp: int
+    """Epoch milliseconds."""
+
+
+class TurnMetricsEvent(CamelModel):
+    type: Literal["turn_metrics"] = "turn_metrics"
+    turn_id: str
+    stt_ms: int | None
+    eou_ms: int | None
+    llm_ttft_ms: int | None
+    tts_ttfb_ms: int | None
+    total_ms: int | None
+
+
+AgentEvent = ComplianceFlagEvent | TurnMetricsEvent
+
+
+class EventSink(Protocol):
+    def publish(self, event: AgentEvent) -> None: ...
+
+
+class RoomEventPublisher:
+    """Fire-and-forget publisher, callable from sync event callbacks and from tools."""
+
+    def __init__(self, participant: rtc.LocalParticipant) -> None:
+        self._participant = participant
+        self._tasks: set[asyncio.Task[None]] = set()
+
+    def publish(self, event: AgentEvent) -> None:
+        task = asyncio.create_task(self._send(event))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def _send(self, event: AgentEvent) -> None:
+        try:
+            await self._participant.publish_data(
+                event.model_dump_json(by_alias=True), reliable=True, topic=EVENTS_TOPIC
+            )
+        # Events are best effort: a closed room or a full buffer must not break the session.
+        except Exception:
+            logger.warning("failed to publish %s event", event.type, exc_info=True)

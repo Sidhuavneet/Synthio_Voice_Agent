@@ -33,6 +33,12 @@
         "epidemiology",
         "uncontrolled",
         "cardiovascular risk"
+      ],
+      "sourceIds": [
+        0,
+        1,
+        2,
+        3
       ]
     },
     {
@@ -59,6 +65,9 @@
         "cortisol",
         "pharmacology",
         "half-life"
+      ],
+      "sourceIds": [
+        4
       ]
     },
     {
@@ -85,6 +94,9 @@
         "blood pressure reduction",
         "systolic",
         "control rate"
+      ],
+      "sourceIds": [
+        4
       ]
     },
     {
@@ -111,6 +123,9 @@
         "tolerability",
         "discontinuation",
         "cortisol"
+      ],
+      "sourceIds": [
+        4
       ]
     },
     {
@@ -134,6 +149,9 @@
         "eGFR",
         "kidney",
         "interactions"
+      ],
+      "sourceIds": [
+        4
       ]
     },
     {
@@ -157,6 +175,10 @@
         "pregnancy",
         "CKD",
         "secondary hypertension"
+      ],
+      "sourceIds": [
+        0,
+        4
       ]
     }
   ],

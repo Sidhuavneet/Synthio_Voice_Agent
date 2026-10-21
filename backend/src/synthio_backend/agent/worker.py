@@ -3,40 +3,40 @@
 import functools
 import logging
 
-from dotenv import load_dotenv
 from livekit.agents import (
     NOT_GIVEN,
     AgentServer,
     AgentSession,
+    ConversationItemAddedEvent,
     JobContext,
     JobProcess,
+    MetricsCollectedEvent,
     TurnHandlingOptions,
     cli,
     inference,
+    llm,
 )
 
 from synthio_backend.agent.deck_selection import select_deck
+from synthio_backend.agent.events import RoomEventPublisher
 from synthio_backend.agent.navigation import handle_navigate
-from synthio_backend.agent.presenter import PresenterAgent
+from synthio_backend.agent.presenter import PresenterAgent, max_tool_steps
 from synthio_backend.agent.protocol import (
     DECK_ID_ATTRIBUTE,
     NAVIGATE_RPC_METHOD,
+    REPORT_RPC_METHOD,
     SLIDE_INDEX_ATTRIBUTE,
 )
+from synthio_backend.agent.report import SessionReporter, handle_report, inference_completer
+from synthio_backend.agent.session_log import SessionLog
 from synthio_backend.agent.slides import SlideController
-from synthio_backend.core.config import ENV_FILES, Settings, get_settings
+from synthio_backend.agent.turn_metrics import TurnMetricsAggregator
+from synthio_backend.core.config import Settings, get_settings, load_env_files
 from synthio_backend.decks.repository import DeckRepository
 
-# The LiveKit CLI and Inference clients read LIVEKIT_* from the process environment.
-# load_dotenv never overrides, so load the higher-precedence file first.
-for env_file in reversed(ENV_FILES):
-    load_dotenv(env_file)
+load_env_files()
 
 logger = logging.getLogger(__name__)
-
-# Headroom over one next_slide call per slide so a full presentation can chain without
-# hitting the per-turn tool step limit.
-_EXTRA_TOOL_STEPS = 2
 
 _DECK_REPOSITORY_KEY = "deck_repository"
 
@@ -54,17 +54,45 @@ def _prewarm(proc: JobProcess) -> None:
 server = AgentServer(setup_fnc=_prewarm, initialize_process_timeout=_INITIALIZE_PROCESS_TIMEOUT_S)
 
 
-def _build_session(settings: Settings, slide_count: int) -> AgentSession[None]:
+def _build_session(
+    settings: Settings, model: inference.LLM, slide_count: int
+) -> AgentSession[None]:
     return AgentSession(
         stt=settings.stt_model,
-        llm=settings.llm_model,
+        llm=model,
         tts=inference.TTS(model=settings.tts_model, voice=settings.tts_voice or NOT_GIVEN),
         turn_handling=TurnHandlingOptions(
             turn_detection=inference.TurnDetector(),
             interruption={"enabled": True, "mode": "adaptive"},
         ),
-        max_tool_steps=slide_count + _EXTRA_TOOL_STEPS,
+        max_tool_steps=max_tool_steps(slide_count),
     )
+
+
+def _observe_session(
+    session: AgentSession[None],
+    log: SessionLog,
+    slides: SlideController,
+    events: RoomEventPublisher,
+) -> None:
+    """Records user turns in the session log and publishes per-turn latency."""
+    aggregator = TurnMetricsAggregator()
+
+    def on_item_added(ev: ConversationItemAddedEvent) -> None:
+        if isinstance(ev.item, llm.ChatMessage) and ev.item.role == "user":
+            text = ev.item.text_content
+            if text:
+                log.record_user_turn(text, slides.index)
+
+    def on_metrics(ev: MetricsCollectedEvent) -> None:
+        turn = aggregator.add(ev.metrics)
+        if turn is not None:
+            events.publish(turn)
+
+    session.on("conversation_item_added", on_item_added)
+    # Deprecated in favour of ChatMessage.metrics, but it is the per-component stream the
+    # contract's turn_metrics event is defined on.
+    session.on("metrics_collected", on_metrics)
 
 
 @server.rtc_session(agent_name=get_settings().agent_name)
@@ -78,16 +106,26 @@ async def presenter_session(ctx: JobContext) -> None:
     participant = ctx.room.local_participant
     await participant.set_attributes({DECK_ID_ATTRIBUTE: deck.id, SLIDE_INDEX_ATTRIBUTE: "0"})
 
-    async def publish_slide_index(index: int) -> None:
+    log = SessionLog()
+
+    async def on_slide_change(index: int) -> None:
+        log.record_slide(index)
         await participant.set_attributes({SLIDE_INDEX_ATTRIBUTE: str(index)})
 
-    slides = SlideController(len(deck.slides), on_change=publish_slide_index)
-    presenter = PresenterAgent(deck, slides)
-    # Registered before start so early calls get a contract error reply, not "unsupported".
+    slides = SlideController(len(deck.slides), on_change=on_slide_change)
+    events = RoomEventPublisher(participant)
+    presenter = PresenterAgent(deck, slides, log, events)
+    model = inference.LLM(model=settings.llm_model)
+    session = _build_session(settings, model, len(deck.slides))
+    _observe_session(session, log, slides, events)
+    reporter = SessionReporter(
+        deck, log, inference_completer(model), history=lambda: session.history.items
+    )
+    # Registered before start so early calls get a contract reply, not "unsupported".
     participant.register_rpc_method(
         NAVIGATE_RPC_METHOD, functools.partial(handle_navigate, presenter)
     )
-    session = _build_session(settings, len(deck.slides))
+    participant.register_rpc_method(REPORT_RPC_METHOD, functools.partial(handle_report, reporter))
     await session.start(agent=presenter, room=ctx.room)
     logger.info("presenting deck %s", deck.id)
 

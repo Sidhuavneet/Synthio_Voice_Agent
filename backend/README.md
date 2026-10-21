@@ -29,6 +29,27 @@ uv run synthio-agent dev    # agent worker, connects to LiveKit Cloud
 For terminal testing without the frontend, run `uv run synthio-agent console` to talk to the
 agent directly from your microphone and speakers.
 
+## Agent features
+
+- **Compliance mode**: the `flag_compliance` tool records off-label, personal-medical-advice,
+  adverse-event and out-of-scope requests, publishes a `compliance_flag` event on the
+  `synthio.events` data topic, and the agent deflects compliantly.
+- **Session report**: the `session.report` RPC returns slide timings and compliance flags from
+  the session log, plus a summary, questions, follow-ups and interests from one structured LLM
+  call (facts only if that call fails or takes over 20 s).
+- **Turn metrics**: per-reply `turn_metrics` events (EOU delay, LLM TTFT, TTS TTFB) assembled
+  from LiveKit metrics.
+
+## Evals
+
+```sh
+uv run synthio-eval --deck acl-football
+```
+
+Runs `evals/<deckId>.jsonl` through the real agent LLM and tools (LiveKit Agents testing API,
+text only, LiveKit credentials required), prints a per-case table with slide routing accuracy
+and compliance precision/recall, and writes `evals/results/<deckId>.json`. Not part of `pytest`.
+
 ## Layout
 
 ```
@@ -37,7 +58,9 @@ src/synthio_backend/
   decks/             deck models, JSON data and repository
   api/               FastAPI app factory, dependencies and routers (/api/health, /api/decks, /api/session)
   session/tokens.py  LiveKit token with agent dispatch
-  agent/             worker entry, presenter agent, prompts, slide controller, RPC handler
+  agent/             worker entry, presenter agent, prompts, slide controller, RPC handlers,
+                     session log and report, data-packet events, turn metrics
+  evals/             synthio-eval dataset loading, runner and scoring
 ```
 
 ## Checks

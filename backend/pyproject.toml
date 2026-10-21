@@ -17,6 +17,7 @@ dependencies = [
 [project.scripts]
 synthio-api = "synthio_backend.api.main:run"
 synthio-agent = "synthio_backend.agent.worker:run"
+synthio-eval = "synthio_backend.evals.cli:main"
 
 [dependency-groups]
 dev = [

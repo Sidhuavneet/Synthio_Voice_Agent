@@ -1,5 +1,10 @@
+import pytest
+
+from synthio_backend.agent.events import ComplianceCategory
 from synthio_backend.agent.prompts import (
     build_instructions,
+    compliance_tool_result,
+    jump_tool_result,
     opening_instructions,
     render_slide,
     slide_tool_result,
@@ -33,3 +38,24 @@ def test_flow_hints(deck: Deck) -> None:
     final = slide_tool_result(deck.slides[-1], count)
     assert "final slide" in final
     assert "Do not call next_slide" in final
+
+
+def test_instructions_cover_compliance_categories(deck: Deck) -> None:
+    instructions = build_instructions(deck)
+    assert "call flag_compliance first" in instructions
+    for category in ("off_label", "personal_medical_advice", "adverse_event", "out_of_scope"):
+        assert f"- {category}:" in instructions
+
+
+def test_jump_result_asks_for_short_answer_not_narration(deck: Deck) -> None:
+    result = jump_tool_result(deck.slides[3], len(deck.slides))
+    assert "Do not present it" in result
+    assert "one to three sentences" in result
+    assert deck.slides[3].title in result
+
+
+@pytest.mark.parametrize(
+    "category", ["off_label", "personal_medical_advice", "adverse_event", "out_of_scope"]
+)
+def test_compliance_result_offers_to_continue(category: ComplianceCategory) -> None:
+    assert "offer to continue the presentation" in compliance_tool_result(category)
