@@ -2,8 +2,24 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Literal
 
-OnSlideChange = Callable[[int], Awaitable[None]]
+SlideTrigger = Literal["question", "user", "auto", "resume"]
+"""Why the slide changed: the agent jumped to answer a question, the user asked for or picked
+a slide, the presentation moved on by itself, or it returned to the cursor after an answer."""
+
+
+@dataclass(frozen=True, slots=True)
+class SlideChange:
+    from_index: int
+    to_index: int
+    trigger: SlideTrigger
+    reason: str | None = None
+    """The agent's short reason, for ``question`` jumps."""
+
+
+OnSlideChange = Callable[[SlideChange], Awaitable[None]]
 
 
 class SlideIndexError(ValueError):
@@ -38,11 +54,14 @@ class SlideController:
                 f"{self._slide_count - 1}"
             )
 
-    async def go_to(self, index: int) -> int:
+    async def go_to(
+        self, index: int, trigger: SlideTrigger = "auto", reason: str | None = None
+    ) -> int:
         async with self._lock:
             self.validate(index)
             if index != self._index:
+                change = SlideChange(self._index, index, trigger, reason)
                 self._index = index
                 if self._on_change is not None:
-                    await self._on_change(index)
+                    await self._on_change(change)
         return index

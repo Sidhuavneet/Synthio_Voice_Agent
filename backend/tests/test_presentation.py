@@ -10,7 +10,7 @@ from synthio_backend.agent.presentation import (
     segments,
 )
 from synthio_backend.agent.prompts import BRIDGE_PHRASE, REPLAY_QUESTION
-from synthio_backend.agent.slides import SlideController, SlideIndexError
+from synthio_backend.agent.slides import SlideChange, SlideController, SlideIndexError
 from synthio_backend.decks.models import Deck
 from synthio_backend.session.resume import ResumeState
 from tests.fakes import FakeProgress, FakeSpeech
@@ -29,12 +29,16 @@ class Rig:
     def __init__(self, deck: Deck, resume: ResumeState | None = None) -> None:
         self.deck = deck
         start = 0 if resume is None else resume.slide_index
-        self.slides = SlideController(len(deck.slides), start=start)
+        self.changes: list[SlideChange] = []
+        self.slides = SlideController(len(deck.slides), on_change=self._record, start=start)
         self.speech = FakeSpeech()
         self.progress = FakeProgress()
         self.controller = PresentationController(
             deck, self.slides, self.speech, self.progress, resume=resume, timing=TIMING
         )
+
+    async def _record(self, change: SlideChange) -> None:
+        self.changes.append(change)
 
     async def finish_current(self) -> str:
         await settle()
@@ -138,10 +142,12 @@ async def test_interruption_keeps_cursor_and_resumes_from_that_point(rig: Rig, d
     playing = rig.speech.playing
     assert playing is not None
     assert playing.text == deck.slides[0].points[1].narration
+    assert rig.controller.narrating_point == 1
     rig.controller.on_user_speaking(True)
     playing.interrupt()
     await settle()
     assert rig.controller.mode == "answering"
+    assert rig.controller.narrating_point is None
     assert rig.controller.cursor == Cursor(0, 2)
     assert rig.progress.points[-1] == NO_POINT
 
@@ -183,6 +189,42 @@ async def test_resume_after_detour_bridges_back_to_the_cursor_slide(rig: Rig, de
     assert rig.slides.index == 0
     await rig.finish_current()
     assert rig.speech.said[-1] == deck.slides[0].points[0].narration
+
+
+async def test_no_point_is_narrated_during_the_bridge_phrase(rig: Rig, deck: Deck) -> None:
+    rig.controller.start()
+    await rig.finish(3)  # greeting, intro, point 0; point 1 is playing
+    rig.controller.on_user_turn()
+    await rig.controller.show(3)
+    assert rig.controller.resume()
+    await settle()
+    assert rig.speech.said[-1] == BRIDGE_PHRASE
+    assert rig.controller.cursor == Cursor(0, 2)
+    # The cursor still points at point 1, but the bridge is what is playing.
+    assert rig.controller.narrating_point is None
+    await rig.finish_current()
+    assert rig.speech.said[-1] == deck.slides[0].points[1].narration
+    assert rig.controller.narrating_point == 1
+
+
+async def test_slide_changes_record_their_trigger(rig: Rig) -> None:
+    rig.controller.start()
+    await rig.finish(1)  # greeting
+    assert rig.controller.narrating_point is None  # the intro is not a point
+    await rig.present_slide_fully(0)
+    await asyncio.sleep(WAIT_S)  # auto-advance to slide 1
+    rig.controller.on_user_turn()
+    await rig.controller.show(3, reason="return to play")
+    assert rig.controller.resume()
+    await settle()
+    await rig.controller.navigate(4)
+    await settle()
+    assert [(c.from_index, c.to_index, c.trigger, c.reason) for c in rig.changes] == [
+        (0, 1, "auto", None),
+        (1, 3, "question", "return to play"),
+        (3, 1, "resume", None),
+        (1, 4, "user", None),
+    ]
 
 
 async def test_navigate_to_new_slide_presents_it_at_once(rig: Rig, deck: Deck) -> None:
@@ -281,7 +323,7 @@ async def test_session_not_running_stops_quietly(rig: Rig) -> None:
 
 
 async def test_unexpected_failure_does_not_stall_in_presenting(deck: Deck) -> None:
-    async def broken_room(_: int) -> None:
+    async def broken_room(_: SlideChange) -> None:
         raise ConnectionError("room closed")
 
     speech = FakeSpeech()

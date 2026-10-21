@@ -3,6 +3,7 @@
 import asyncio
 import functools
 import logging
+import time
 
 from livekit.agents import (
     AgentServer,
@@ -18,13 +19,20 @@ from livekit.agents import (
     TurnHandlingOptions,
     UserStateChangedEvent,
     cli,
+    inference,
     llm,
+    room_io,
 )
 
 from synthio_backend.agent.adapters import RoomProgress, SessionSpeech, presented_attribute
 from synthio_backend.agent.deck_selection import select_job
 from synthio_backend.agent.errors import session_error_event
-from synthio_backend.agent.events import RoomEventPublisher, SessionErrorEvent
+from synthio_backend.agent.events import (
+    InterruptionEvent,
+    RoomEventPublisher,
+    SessionErrorEvent,
+    SlideChangedEvent,
+)
 from synthio_backend.agent.navigation import handle_navigate
 from synthio_backend.agent.presentation import (
     MAX_ENDPOINTING_DELAY_S,
@@ -50,7 +58,7 @@ from synthio_backend.agent.providers import (
 )
 from synthio_backend.agent.report import SessionReporter, handle_report, llm_completer
 from synthio_backend.agent.session_log import SessionLog
-from synthio_backend.agent.slides import SlideController
+from synthio_backend.agent.slides import SlideChange, SlideController
 from synthio_backend.agent.turn_metrics import TurnMetricsAggregator
 from synthio_backend.core.config import Settings, get_settings, load_env_files
 from synthio_backend.decks.repository import DeckRepository
@@ -146,6 +154,21 @@ def _observe_session(
     def on_agent_state(ev: AgentStateChangedEvent) -> None:
         presentation.on_agent_busy(ev.new_state in ("thinking", "speaking"))
 
+    def on_overlapping_speech(ev: inference.OverlappingSpeechEvent) -> None:
+        # Inconclusive when the agent simply finished first; an overlap that ended without
+        # any model verdict was too short to matter (a cough, a click).
+        if ev.agent_ended or (not ev.is_interruption and ev.total_duration <= 0):
+            return
+        events.publish(
+            InterruptionEvent(
+                kind="barge_in" if ev.is_interruption else "backchannel",
+                slide_index=slides.index,
+                point_index=presentation.narrating_point,
+                detection_ms=round(ev.detection_delay * 1000),
+                timestamp=round(ev.created_at * 1000),
+            )
+        )
+
     def on_error(ev: ErrorEvent) -> None:
         # LiveKit closes the session only after repeated unrecoverable errors; a spent quota
         # will not recover, so end at once instead of leaving the user on "listening".
@@ -167,8 +190,25 @@ def _observe_session(
     session.on("metrics_collected", on_metrics)
     session.on("user_state_changed", on_user_state)
     session.on("agent_state_changed", on_agent_state)
+    # Only emitted by adaptive interruption; after a fallback to VAD, interruptions still
+    # work but are not reported.
+    session.on("overlapping_speech", on_overlapping_speech)
     session.on("error", on_error)
     session.on("close", on_close)
+
+
+async def _on_text_input(
+    presentation: PresentationController,
+    session: AgentSession[None],
+    ev: room_io.TextInputEvent,
+) -> None:
+    """Typed questions (the "Try asking" chips) take the same path as spoken ones. LiveKit's
+    default callback skips ``on_user_turn_completed``, so the presentation is told here."""
+    # Same as LiveKit's default callback (which documents _claim_user_turn for this use).
+    async with session._claim_user_turn():
+        presentation.on_user_turn()
+        await session.interrupt()
+        session.generate_reply(user_input=ev.text)
 
 
 @server.rtc_session(agent_name=get_settings().agent_name)
@@ -194,13 +234,24 @@ async def presenter_session(ctx: JobContext) -> None:
     )
 
     log = SessionLog(start_slide=start_slide)
+    events = RoomEventPublisher(participant)
 
-    async def on_slide_change(index: int) -> None:
-        log.record_slide(index)
-        await participant.set_attributes({SLIDE_INDEX_ATTRIBUTE: str(index)})
+    async def on_slide_change(change: SlideChange) -> None:
+        log.record_slide(change.to_index)
+        await participant.set_attributes({SLIDE_INDEX_ATTRIBUTE: str(change.to_index)})
+        question = log.turns[-1].text if change.trigger == "question" and log.turns else None
+        events.publish(
+            SlideChangedEvent(
+                from_index=change.from_index,
+                to_index=change.to_index,
+                trigger=change.trigger,
+                reason=change.reason,
+                question=question,
+                timestamp=round(time.time() * 1000),
+            )
+        )
 
     slides = SlideController(len(deck.slides), on_change=on_slide_change, start=start_slide)
-    events = RoomEventPublisher(participant)
     model = build_llm(settings)
     session = _build_session(settings, model)
     presentation = PresentationController(
@@ -216,7 +267,15 @@ async def presenter_session(ctx: JobContext) -> None:
         NAVIGATE_RPC_METHOD, functools.partial(handle_navigate, presentation)
     )
     participant.register_rpc_method(REPORT_RPC_METHOD, functools.partial(handle_report, reporter))
-    await session.start(agent=presenter, room=ctx.room)
+    await session.start(
+        agent=presenter,
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            text_input=room_io.TextInputOptions(
+                text_input_cb=functools.partial(_on_text_input, presentation)
+            )
+        ),
+    )
     logger.info("presenting deck %s from slide %d", deck.id, start_slide)
 
 

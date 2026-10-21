@@ -1,14 +1,14 @@
 import pytest
 
-from synthio_backend.agent.slides import SlideController, SlideIndexError
+from synthio_backend.agent.slides import SlideChange, SlideController, SlideIndexError
 
 
 class Recorder:
     def __init__(self) -> None:
-        self.changes: list[int] = []
+        self.changes: list[SlideChange] = []
 
-    async def __call__(self, index: int) -> None:
-        self.changes.append(index)
+    async def __call__(self, change: SlideChange) -> None:
+        self.changes.append(change)
 
 
 async def test_go_to_notifies_changes() -> None:
@@ -17,7 +17,14 @@ async def test_go_to_notifies_changes() -> None:
     assert controller.index == 0
     assert await controller.go_to(1) == 1
     assert await controller.go_to(2) == 2
-    assert recorder.changes == [1, 2]
+    assert recorder.changes == [SlideChange(0, 1, "auto"), SlideChange(1, 2, "auto")]
+
+
+async def test_go_to_passes_trigger_and_reason() -> None:
+    recorder = Recorder()
+    controller = SlideController(3, on_change=recorder)
+    await controller.go_to(2, "question", "dosing")
+    assert recorder.changes == [SlideChange(0, 2, "question", "dosing")]
 
 
 async def test_go_to_same_index_does_not_notify() -> None:

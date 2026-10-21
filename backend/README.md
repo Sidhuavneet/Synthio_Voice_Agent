@@ -67,12 +67,20 @@ agent directly from your microphone and speakers.
   deflects compliantly.
 - **Session report**: the `session.report` RPC returns slide timings and compliance flags from
   the session log, plus a summary, questions, follow-ups and interests from one structured LLM
-  call (facts only if that call fails or takes over 20 s). Every question left open also
-  appears in the follow-ups.
+  call (facts only if that call fails or takes over 20 s). Follow-ups are typed
+  (`adverse_event`, `medical_information`, `follow_up`); adverse events carry the four minimum
+  reporting criteria. Every adverse event flag and every open question is guaranteed a
+  follow-up, even without the LLM.
 - **Session errors**: an unrecoverable provider error (or a spent quota) publishes a
   `session_error` event and shuts the job down so the agent leaves the room.
 - **Turn metrics**: per-reply `turn_metrics` events (EOU delay, LLM TTFT, TTS TTFB) assembled
   from LiveKit metrics.
+- **Slide changes and interruptions**: `slide_changed` events carry why the slide moved
+  (`question` with the agent's reason, `user`, `auto`, `resume`); `interruption` events come
+  from LiveKit's adaptive `overlapping_speech` verdicts (barge-in with detection time, or a
+  backchannel the agent talked through).
+- **Typed questions**: text sent on `lk.chat` (the frontend's "Try asking" chips) goes through
+  a custom text-input callback, so it stops the scripted narration like a spoken question.
 
 ## Evals
 

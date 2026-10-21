@@ -24,7 +24,7 @@ from synthio_backend.agent.prompts import (
     greeting,
     wrap_up_instructions,
 )
-from synthio_backend.agent.slides import SlideController
+from synthio_backend.agent.slides import SlideController, SlideTrigger
 from synthio_backend.decks.models import Deck, Slide
 from synthio_backend.session.resume import ResumeState
 
@@ -143,6 +143,8 @@ class PresentationController:
         self._agent_busy = False
         self._presenting_task: asyncio.Task[None] | None = None
         self._current: Playback | None = None
+        # Point of the segment playing now; None for an intro or a lead phrase, or when idle.
+        self._playing_point: int | None = None
         self._timer: asyncio.Task[None] | None = None
         self._tasks: set[asyncio.Task[None]] = set()
 
@@ -158,6 +160,11 @@ class PresentationController:
     def presented(self) -> list[int]:
         return sorted(self._presented)
 
+    @property
+    def narrating_point(self) -> int | None:
+        """Point being narrated right now, or None (intro, lead phrase, Q&A, idle)."""
+        return self._playing_point if self._mode == "presenting" else None
+
     def state(self) -> PresentationState:
         return PresentationState(
             mode=self._mode,
@@ -170,7 +177,7 @@ class PresentationController:
 
     def start(self) -> None:
         """Greets the user, then presents from the cursor."""
-        self._begin(lead=greeting(self._deck, self._resume_slide))
+        self._begin(lead=greeting(self._deck, self._resume_slide), trigger="auto")
 
     async def navigate(self, index: int) -> None:
         """The user picked a slide: present it, or offer to replay one already presented."""
@@ -180,9 +187,9 @@ class PresentationController:
         await self._speech.interrupt()
         if index not in self._presented:
             self._cursor = Cursor(index)
-            self._begin(lead=None)
+            self._begin(lead=None, trigger="user")
             return
-        await self.show(index)
+        await self.show(index, trigger="user")
         self._mode = "idle"
         self._replay_pending = index
         self._replay_offer = index
@@ -193,7 +200,7 @@ class PresentationController:
         self._slides.validate(index)
         self._clear_pending()
         self._cursor = Cursor(index)
-        self._begin(lead=None)
+        self._begin(lead=None, trigger="user")
 
     def resume(self) -> bool:
         """Continues from the cursor. Returns False once the presentation has finished."""
@@ -204,12 +211,17 @@ class PresentationController:
             self._finish()
             return True
         returning = self._slides.index != self._cursor.slide and not self._screen_follows_cursor
-        self._begin(lead=BRIDGE_PHRASE if returning else None)
+        if returning:
+            self._begin(lead=BRIDGE_PHRASE, trigger="resume")
+        else:
+            self._begin(lead=None, trigger="auto")
         return True
 
-    async def show(self, index: int) -> None:
+    async def show(
+        self, index: int, trigger: SlideTrigger = "question", reason: str | None = None
+    ) -> None:
         """Shows a slide without moving the cursor (to answer a question)."""
-        await self._slides.go_to(index)
+        await self._slides.go_to(index, trigger, reason)
         self._screen_follows_cursor = index == self._cursor.slide
 
     def close(self) -> None:
@@ -245,18 +257,18 @@ class PresentationController:
 
     # -- presenting -------------------------------------------------------------------------
 
-    def _begin(self, lead: str | None) -> None:
+    def _begin(self, lead: str | None, trigger: SlideTrigger) -> None:
         self._cancel_timer()
         self._stop_presenting()
         self._replay_offer = None
         self._mode = "presenting"
-        self._presenting_task = asyncio.create_task(self._present(lead))
+        self._presenting_task = asyncio.create_task(self._present(lead, trigger))
 
-    async def _present(self, lead: str | None) -> None:
+    async def _present(self, lead: str | None, trigger: SlideTrigger) -> None:
         start = self._cursor
         slide = self._deck.slides[start.slide]
         try:
-            await self._slides.go_to(slide.index)
+            await self._slides.go_to(slide.index, trigger)
             self._screen_follows_cursor = True
             if lead is not None and not await self._play(lead, NO_POINT):
                 return
@@ -288,10 +300,12 @@ class PresentationController:
         self._progress.show_point(point)
         handle = self._speech.say(text)
         self._current = handle
+        self._playing_point = None if point == NO_POINT else point
         try:
             await handle.wait_for_playout()
         finally:
             self._current = None
+            self._playing_point = None
         if not handle.interrupted:
             return True
         # Interrupted by the user (an explicit stop cancels this task instead).

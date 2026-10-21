@@ -7,6 +7,7 @@ from typing import Literal, Protocol
 from livekit import rtc
 
 from synthio_backend.agent.protocol import EVENTS_TOPIC
+from synthio_backend.agent.slides import SlideTrigger
 from synthio_backend.decks.models import CamelModel
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,33 @@ class TurnMetricsEvent(CamelModel):
     total_ms: int | None
 
 
+class SlideChangedEvent(CamelModel):
+    type: Literal["slide_changed"] = "slide_changed"
+    from_index: int
+    to_index: int
+    trigger: SlideTrigger
+    reason: str | None
+    """The agent's short reason, for ``question`` jumps."""
+    question: str | None
+    """The user turn being answered, for ``question`` jumps."""
+    timestamp: int
+    """Epoch milliseconds."""
+
+
+class InterruptionEvent(CamelModel):
+    """The user spoke over the agent: a real barge-in, or a backchannel it talked through."""
+
+    type: Literal["interruption"] = "interruption"
+    kind: Literal["barge_in", "backchannel"]
+    slide_index: int
+    point_index: int | None
+    """Point being narrated when the user spoke, or None (intro, answer, idle)."""
+    detection_ms: int
+    """From the onset of the user's speech to LiveKit's interruption verdict."""
+    timestamp: int
+    """Epoch milliseconds."""
+
+
 SessionErrorCode = Literal["quota_exceeded", "provider_error", "internal"]
 
 
@@ -46,7 +74,13 @@ class SessionErrorEvent(CamelModel):
     """User-safe description."""
 
 
-AgentEvent = ComplianceFlagEvent | TurnMetricsEvent | SessionErrorEvent
+AgentEvent = (
+    ComplianceFlagEvent
+    | TurnMetricsEvent
+    | SessionErrorEvent
+    | SlideChangedEvent
+    | InterruptionEvent
+)
 
 
 class EventSink(Protocol):

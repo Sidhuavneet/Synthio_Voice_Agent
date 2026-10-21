@@ -78,7 +78,8 @@ class PresenterAgent(Agent):
 
         Args:
             index: Zero-based index of the slide to show.
-            reason: Short reason for switching, e.g. which question it answers.
+            reason: What the user asked about, in five words or fewer, shown on screen,
+                e.g. "return-to-play timing".
         """
         # Tools run while the preceding speech is still playing; switch only once it ends.
         await context.wait_for_playout()
@@ -87,7 +88,7 @@ class PresenterAgent(Agent):
             logger.info("go_to_slide %d skipped: speech was interrupted", index)
             return interrupted_tool_result(self._slides.index)
         try:
-            await self._presentation.show(index)
+            await self._presentation.show(index, reason=reason)
         except SlideIndexError as exc:
             raise ToolError(str(exc)) from exc
         self._log.route_latest_turn(index)

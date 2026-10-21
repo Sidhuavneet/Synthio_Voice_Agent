@@ -47,6 +47,32 @@ class ReportQuestion(CamelModel):
     answered: bool
 
 
+FollowUpKind = Literal["adverse_event", "medical_information", "follow_up"]
+
+
+class AdverseEventCriteria(CamelModel):
+    """The four minimum criteria for a valid adverse event report, as heard in the session."""
+
+    identifiable_patient: bool = Field(
+        description="A specific person who had the event is mentioned (e.g. 'my mother', 'I')"
+    )
+    identifiable_reporter: bool = Field(description="The person reporting it can be identified")
+    suspect_product: bool = Field(description="A specific medicine or product is named")
+    adverse_event: bool = Field(description="A specific side effect or harm is described")
+
+
+class FollowUp(CamelModel):
+    kind: FollowUpKind = Field(
+        description="adverse_event: a reported side effect or harm to pass to safety; "
+        "medical_information: a question needing a documented answer (unanswered, off-label "
+        "or deflected); follow_up: anything else, such as sending a resource"
+    )
+    text: str = Field(description="The action, in one sentence")
+    ae_criteria: AdverseEventCriteria | None = Field(
+        default=None, description="Only for adverse_event; null otherwise"
+    )
+
+
 class SessionReport(CamelModel):
     ok: Literal[True] = True
     deck_id: str
@@ -55,7 +81,7 @@ class SessionReport(CamelModel):
     slides: list[ReportSlide]
     questions: list[ReportQuestion]
     compliance_flags: list[ComplianceFlagEvent]
-    follow_ups: list[str]
+    follow_ups: list[FollowUp]
     interests: list[str]
 
 
@@ -72,8 +98,9 @@ class ReportInsights(BaseModel):
     questions: list[InsightQuestion] = Field(
         description="Genuine questions the user asked, in order; not replies like 'yes'"
     )
-    follow_ups: list[str] = Field(
-        description="Actionable follow-up items: unanswered or open questions, deflected topics"
+    follow_ups: list[FollowUp] = Field(
+        description="Actionable follow-up items: reported adverse events, unanswered or open "
+        "questions, deflected topics"
     )
     interests: list[str] = Field(description="Topics the user engaged with most, most first")
 
@@ -90,7 +117,8 @@ questions or interests. Write in plain English, third person ("The user ..."). K
 item under twenty words. Return empty lists when there is nothing to report. The presenter's \
 slide narration is scripted; only the user's questions and the presenter's answers matter for \
 questions and follow-ups. Every question marked as not answered must also appear in \
-follow-ups."""
+follow-ups. Every reported adverse event needs its own adverse_event follow-up that quotes \
+the user's report; mark each criterion true only if it was actually stated."""
 
 
 def llm_completer(model: ChatLLM) -> Completer:
@@ -147,23 +175,47 @@ def _encoded_size(report: SessionReport) -> int:
     return len(report.model_dump_json(by_alias=True).encode())
 
 
-def _is_followed_up(question: str, follow_ups: Sequence[str]) -> bool:
+def _is_followed_up(question: str, follow_ups: Sequence[FollowUp]) -> bool:
     needle = question.casefold().strip().rstrip("?.!")
-    return any(needle in item.casefold() for item in follow_ups)
+    return any(needle in item.text.casefold() for item in follow_ups)
 
 
-def _open_question_follow_ups(
-    questions: Sequence[ReportQuestion], follow_ups: Sequence[str]
-) -> list[str]:
-    """Follow-ups plus one for every open question they do not mention yet, so the report
-    never lists an open question while saying there is nothing to follow up."""
+def _clip_follow_ups(items: Sequence[FollowUp]) -> list[FollowUp]:
+    return [
+        item.model_copy(
+            update={
+                "text": _clip(item.text),
+                # Criteria only make sense on an adverse event.
+                "ae_criteria": item.ae_criteria if item.kind == "adverse_event" else None,
+            }
+        )
+        for item in items[:_MAX_LIST_ITEMS]
+        if item.text.strip()
+    ]
+
+
+def _complete_follow_ups(
+    questions: Sequence[ReportQuestion],
+    flags: Sequence[ComplianceFlagEvent],
+    follow_ups: Sequence[FollowUp],
+) -> list[FollowUp]:
+    """Follow-ups plus one per adverse event flag and one per open question they do not
+    mention yet, so the report never drops an adverse event (even when the LLM failed) or
+    lists an open question while saying there is nothing to follow up."""
+    reported = [item for item in follow_ups if item.kind == "adverse_event"]
+    events = [
+        FollowUp(kind="adverse_event", text=f"Report the adverse event: {flag.question}")
+        for flag in flags
+        if flag.category == "adverse_event" and not _is_followed_up(flag.question, reported)
+    ]
     # Not clipped: the question is already clipped and must stay findable in the item.
-    added = [
-        f"Follow up on the open question: {q.question}"
+    open_questions = [
+        FollowUp(kind="medical_information", text=f"Follow up on the open question: {q.question}")
         for q in questions
         if not q.answered and not _is_followed_up(q.question, follow_ups)
     ]
-    return [*follow_ups, *added][:_MAX_LIST_ITEMS]
+    # Adverse events first: truncation to the size limit drops items from the end.
+    return [*events, *follow_ups, *open_questions][:_MAX_LIST_ITEMS]
 
 
 def _drop_unfollowed(report: SessionReport) -> SessionReport:
@@ -217,7 +269,7 @@ def assemble_report(
         ],
         questions=questions,
         compliance_flags=flags,
-        follow_ups=_open_question_follow_ups(questions, _clip_all(insights.follow_ups)),
+        follow_ups=_complete_follow_ups(questions, flags, _clip_follow_ups(insights.follow_ups)),
         interests=_clip_all(insights.interests),
     )
     return _drop_unfollowed(_fit(report, max_bytes))
