@@ -1,0 +1,58 @@
+# Redeploys the presenter agent to LiveKit Cloud on pushes to main that touch backend/.
+# Uses LiveKit's official action (https://github.com/livekit/deploy-action), which runs
+# `lk agent deploy` non-interactively with the project credentials.
+#
+# One-time setup:
+#   1. Run `lk agent create` locally in backend/ and commit the generated backend/livekit.toml
+#      (it holds the agent id; until it exists this workflow skips the deploy).
+#   2. Add repo secrets (Settings -> Secrets and variables -> Actions): LIVEKIT_URL,
+#      LIVEKIT_API_KEY, LIVEKIT_API_SECRET (same values as the LiveKit Cloud project).
+# Agent secrets (DEEPGRAM_API_KEY, ...) stay in LiveKit Cloud; manage them with
+# `lk agent update-secrets`. This workflow does not change them.
+name: Deploy agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "!backend/**/*.md"
+      - "!backend/tests/**"
+      - "!backend/evals/**"
+      - "!backend/.env*"
+      - ".github/workflows/deploy-agent.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip until the agent exists
+        id: config
+        run: |
+          if [ -f backend/livekit.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::backend/livekit.toml not committed yet; run 'lk agent create' first."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to LiveKit Cloud
+        if: steps.config.outputs.present == 'true'
+        uses: livekit/deploy-action@v2.12.2
+        env:
+          LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
+          LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
+          LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+        with:
+          OPERATION: deploy
+          WORKING_DIRECTORY: backend

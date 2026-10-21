@@ -49,17 +49,47 @@ Open http://localhost:3000, pick a deck, allow the microphone, and start talking
 
 ## Deploy
 
-Backend on [Render](https://render.com), frontend on [Vercel](https://vercel.com). **Auto-deploy: every push to `main` redeploys both.**
+Zero cost: agent on [LiveKit Cloud Agents](https://docs.livekit.io/deploy/agents/) (free Build plan), API on a free [Render](https://render.com) web service, frontend on [Vercel](https://vercel.com) Hobby.
 
-1. **Render** (backend): New → Blueprint → pick this repo. [`render.yaml`](render.yaml) creates two services from `backend/`:
-   - `synthio-api` (web service, free plan): the REST API, health check `/api/health`. A free web service sleeps after inactivity, so the first request after a pause is slow.
-   - `synthio-agent` (background worker): the LiveKit presenter agent. Background workers need a paid instance type on Render.
+| Part | Host | Config | Redeploys on push to `main` |
+|---|---|---|---|
+| Agent worker (`synthio-agent`) | LiveKit Cloud | [`backend/Dockerfile`](backend/Dockerfile), `backend/livekit.toml` | via [`deploy-agent.yml`](.github/workflows/deploy-agent.yml) (or run `lk agent deploy`) |
+| REST API (`synthio-api`) | Render, free web service | [`render.yaml`](render.yaml) | yes |
+| Frontend | Vercel | `frontend/` | yes |
 
-   Fill the secret env vars when prompted: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, and optionally `DEEPGRAM_API_KEY` / `GOOGLE_API_KEY` (own keys are tried first, LiveKit Inference is the runtime fallback).
-2. **Vercel** (frontend): import the repo, set **Root Directory** to `frontend`, and add `NEXT_PUBLIC_API_URL=https://<synthio-api>.onrender.com`. Next.js is detected automatically.
-3. Back on Render, set `FRONTEND_ORIGINS` on `synthio-api` to the Vercel URL (e.g. `https://synthio.vercel.app`). To allow preview deploys too, set `FRONTEND_ORIGIN_REGEX` (e.g. `https://synthio-.*\.vercel\.app`).
+### 1. Agent → LiveKit Cloud
 
-Alternative host for the worker: [LiveKit Cloud Agents](https://docs.livekit.io/agents/ops/deployment/) (`lk agent create` from `backend/`).
+Install the [LiveKit CLI](https://docs.livekit.io/home/cli/) (`winget install LiveKit.LiveKitCLI` on Windows, `brew install livekit-cli` on macOS), then from `backend/`:
+
+```sh
+lk cloud auth                     # opens the browser; links the CLI to your LiveKit Cloud project
+cp .env.agent.example .env.agent.local   # PowerShell: Copy-Item; fill in only what you use
+lk agent create --secrets-file .env.agent.local --ignore-empty-secrets
+```
+
+`lk agent create` uploads `backend/` (minus `.dockerignore`, `.gitignore` and `.env.*` files), builds the [`Dockerfile`](backend/Dockerfile) in LiveKit Cloud, starts the worker, and writes `livekit.toml` (agent id and project). **Commit `livekit.toml`**: later deploys and the GitHub workflow use it.
+
+- **Secrets:** `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` are injected by LiveKit Cloud and cannot be set as secrets, so they are not in `.env.agent.example`. Everything in it is optional (no keys means LiveKit Inference only). Change secrets later with `lk agent update-secrets --secrets-file .env.agent.local --ignore-empty-secrets` (rolling restart; add `--overwrite` to drop secrets not in the file). List names with `lk agent secrets`.
+- **Dispatch:** the worker keeps its dispatch name from code, `synthio-presenter` (`AGENT_NAME`), which the API puts in every token. If you change `AGENT_NAME`, set the same value on Render and as an agent secret.
+- **Redeploy:** `lk agent deploy` (from `backend/`). **Status / logs:** `lk agent status`, `lk agent logs`.
+- **Free Build plan:** 1 agent deployment, up to 5 concurrent sessions, 1,000 agent session minutes a month (hard cap) and $2.50 of LiveKit Inference credit a month. The agent scales to zero when idle, so the first session after a pause waits about 10–20 s for a cold start. Rollback needs a paid plan (on free, revert and redeploy).
+
+Check the image locally (optional): `docker build -t synthio-agent backend`.
+
+### 2. API → Render (free web service)
+
+New → **Blueprint** → pick this repo; [`render.yaml`](render.yaml) creates only `synthio-api` on the free plan (or New → **Web Service** by hand: root directory `backend`, build `pip install uv && uv sync --frozen --no-dev`, start `uv run --no-sync uvicorn synthio_backend.api.main:create_app --factory --host 0.0.0.0 --port $PORT`, health check `/api/health`, env `PYTHON_VERSION=3.13.5`).
+
+Env vars: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (same project as the agent), `FRONTEND_ORIGINS` (the Vercel URL, e.g. `https://synthio.vercel.app`) and optionally `FRONTEND_ORIGIN_REGEX` for preview deploys (e.g. `https://synthio-.*\.vercel\.app`). The API needs no Deepgram or Google keys. A free web service sleeps after about 15 minutes idle, so the first request after a pause is slow.
+
+### 3. Frontend → Vercel
+
+Import the repo, set **Root Directory** to `frontend`, and add `NEXT_PUBLIC_API_URL=https://<synthio-api>.onrender.com`. Next.js is detected automatically. Then put the Vercel URL into `FRONTEND_ORIGINS` on Render.
+
+### 4. Auto-deploy
+
+- **Render** and **Vercel** redeploy on every push to `main`.
+- **Agent:** [`.github/workflows/deploy-agent.yml`](.github/workflows/deploy-agent.yml) runs LiveKit's [deploy action](https://github.com/livekit/deploy-action) (`lk agent deploy`) on pushes to `main` that touch `backend/`. Add repo secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`; it skips until `backend/livekit.toml` is committed. Without it, run `lk agent deploy` by hand. Agent secrets stay in LiveKit Cloud (`lk agent update-secrets`).
 
 ## 60-second demo
 

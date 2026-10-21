@@ -1,0 +1,48 @@
+# Build context for the agent image (LiveKit Cloud also skips .env.* and .gitignore matches).
+
+# Tests and eval datasets (leading slash: root only, so src/synthio_backend/evals/ stays)
+/tests/
+/evals/
+
+# Python bytecode and artifacts
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# Caches
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage/
+
+# Logs and temp files
+*.log
+.tmp
+
+# Environment variables and secrets: injected at runtime by LiveKit Cloud
+.env
+.env.*
+
+# LiveKit CLI config (not needed inside the image)
+livekit.toml
+
+# VCS, editor, OS
+.git
+.gitignore
+.gitattributes
+.github/
+.idea/
+.vscode/
+.DS_Store
+
+# Coding agent files
+.claude/
+CLAUDE.md
+AGENTS.md
