@@ -36,7 +36,17 @@ class TurnMetricsEvent(CamelModel):
     total_ms: int | None
 
 
-AgentEvent = ComplianceFlagEvent | TurnMetricsEvent
+SessionErrorCode = Literal["quota_exceeded", "provider_error", "internal"]
+
+
+class SessionErrorEvent(CamelModel):
+    type: Literal["session_error"] = "session_error"
+    code: SessionErrorCode
+    message: str
+    """User-safe description."""
+
+
+AgentEvent = ComplianceFlagEvent | TurnMetricsEvent | SessionErrorEvent
 
 
 class EventSink(Protocol):
@@ -51,11 +61,12 @@ class RoomEventPublisher:
         self._tasks: set[asyncio.Task[None]] = set()
 
     def publish(self, event: AgentEvent) -> None:
-        task = asyncio.create_task(self._send(event))
+        task = asyncio.create_task(self.send(event))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
-    async def _send(self, event: AgentEvent) -> None:
+    async def send(self, event: AgentEvent) -> None:
+        """Sends now; for callers that must know the packet left before moving on."""
         try:
             await self._participant.publish_data(
                 event.model_dump_json(by_alias=True), reliable=True, topic=EVENTS_TOPIC

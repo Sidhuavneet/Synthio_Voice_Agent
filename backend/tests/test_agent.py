@@ -3,23 +3,25 @@ from typing import cast
 
 import pytest
 from livekit import rtc
-from livekit.agents import FunctionTool, RunContext, ToolError
+from livekit.agents import Agent, FunctionTool, ModelSettings, RunContext, ToolError, llm
 
-from synthio_backend.agent.deck_selection import select_deck
+from synthio_backend.agent.deck_selection import select_job
 from synthio_backend.agent.events import AgentEvent
 from synthio_backend.agent.navigation import handle_navigate, parse_navigate_payload
+from synthio_backend.agent.presentation import PresentationController
 from synthio_backend.agent.presenter import PresenterAgent
 from synthio_backend.agent.session_log import SessionLog
 from synthio_backend.agent.slides import SlideController
 from synthio_backend.decks.models import Deck
 from synthio_backend.decks.repository import DeckRepository
+from tests.fakes import FakeProgress, FakeSpeech
 
 
 class FakeNavigator:
     def __init__(self, slide_count: int) -> None:
         self.slides = SlideController(slide_count)
 
-    async def show_slide_for_user(self, index: int) -> None:
+    async def navigate(self, index: int) -> None:
         await self.slides.go_to(index)
 
 
@@ -56,7 +58,7 @@ async def test_handle_navigate_error(payload: str) -> None:
 
 
 class StoppedNavigator:
-    async def show_slide_for_user(self, index: int) -> None:
+    async def navigate(self, index: int) -> None:
         raise RuntimeError("AgentSession isn't running")
 
 
@@ -68,8 +70,31 @@ async def test_handle_navigate_session_not_running() -> None:
 @pytest.mark.parametrize(
     "metadata", ['{"deckId":"sample-deck"}', '{"deckId":"missing"}', "", "{bad", '{"deckId":1}']
 )
-def test_select_deck_falls_back_to_first(repository: DeckRepository, metadata: str) -> None:
-    assert select_deck(repository, metadata).id == "sample-deck"
+def test_select_job_falls_back_to_first_deck(repository: DeckRepository, metadata: str) -> None:
+    job = select_job(repository, metadata)
+    assert job.deck.id == "sample-deck"
+    assert job.resume is None
+
+
+def test_select_job_reads_resume(repository: DeckRepository) -> None:
+    metadata = '{"deckId":"sample-deck","resume":{"slideIndex":2,"presented":[0,1]}}'
+    resume = select_job(repository, metadata).resume
+    assert resume is not None
+    assert (resume.slide_index, resume.presented) == (2, [0, 1])
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        '{"deckId":"sample-deck","resume":{"slideIndex":9,"presented":[]}}',
+        '{"deckId":"sample-deck","resume":{"slideIndex":1,"presented":[7]}}',
+        '{"deckId":"sample-deck","resume":"bad"}',
+        # Resume state belongs to the requested deck, not to the fallback deck.
+        '{"deckId":"missing","resume":{"slideIndex":1,"presented":[0]}}',
+    ],
+)
+def test_select_job_drops_invalid_resume(repository: DeckRepository, metadata: str) -> None:
+    assert select_job(repository, metadata).resume is None
 
 
 class RecordingSink:
@@ -78,12 +103,6 @@ class RecordingSink:
 
     def publish(self, event: AgentEvent) -> None:
         self.events.append(event)
-
-
-def test_presenter_exposes_tools(deck: Deck) -> None:
-    agent = PresenterAgent(deck, SlideController(len(deck.slides)), SessionLog(), RecordingSink())
-    names = {tool.info.name for tool in agent.tools if isinstance(tool, FunctionTool)}
-    assert names == {"next_slide", "go_to_slide", "flag_compliance"}
 
 
 class StubSpeechHandle:
@@ -103,73 +122,113 @@ _CONTEXT = cast(RunContext[None], StubRunContext())
 _INTERRUPTED = cast(RunContext[None], StubRunContext(interrupted=True))
 
 
-async def _presenter(deck: Deck, start: int = 0) -> tuple[PresenterAgent, SlideController]:
-    slides = SlideController(len(deck.slides))
-    await slides.go_to(start)
-    return PresenterAgent(deck, slides, SessionLog(), RecordingSink()), slides
+class Harness:
+    def __init__(self, deck: Deck, log: SessionLog | None = None) -> None:
+        self.slides = SlideController(len(deck.slides))
+        self.speech = FakeSpeech()
+        self.presentation = PresentationController(deck, self.slides, self.speech, FakeProgress())
+        self.log = log or SessionLog()
+        self.sink = RecordingSink()
+        self.agent = PresenterAgent(deck, self.slides, self.presentation, self.log, self.sink)
 
 
-async def test_next_slide_advances_and_returns_slide(deck: Deck) -> None:
-    agent, slides = await _presenter(deck)
-    result = await agent.next_slide(_CONTEXT)
-    assert slides.index == 1
-    assert deck.slides[1].title in result
+def test_presenter_exposes_tools(deck: Deck) -> None:
+    agent = Harness(deck).agent
+    names = {tool.info.name for tool in agent.tools if isinstance(tool, FunctionTool)}
+    assert names == {"go_to_slide", "present_slide", "resume_presentation", "flag_compliance"}
 
 
-async def test_next_slide_on_last_slide_raises(deck: Deck) -> None:
-    agent, slides = await _presenter(deck, start=len(deck.slides) - 1)
-    with pytest.raises(ToolError, match="last slide"):
-        await agent.next_slide(_CONTEXT)
-    assert slides.index == len(deck.slides) - 1
-
-
-async def test_next_slide_after_interruption_stays(deck: Deck) -> None:
-    agent, slides = await _presenter(deck)
-    result = await agent.next_slide(_INTERRUPTED)
-    assert slides.index == 0
-    assert "interrupted" in result
+async def test_go_to_slide_shows_without_moving_cursor(deck: Deck) -> None:
+    h = Harness(deck)
+    result = await h.agent.go_to_slide(_CONTEXT, 3, "question about slide 3")
+    assert h.slides.index == 3
+    assert h.presentation.cursor.slide == 0
+    assert deck.slides[3].title in result
+    assert "Do not present it" in result
 
 
 async def test_go_to_slide_after_interruption_stays(deck: Deck) -> None:
-    agent, slides = await _presenter(deck)
-    result = await agent.go_to_slide(_INTERRUPTED, 3, "question about slide 3")
-    assert slides.index == 0
+    h = Harness(deck)
+    result = await h.agent.go_to_slide(_INTERRUPTED, 3, "question about slide 3")
+    assert h.slides.index == 0
     assert "interrupted" in result
 
 
-async def test_go_to_slide_returns_slide(deck: Deck) -> None:
-    agent, slides = await _presenter(deck)
-    result = await agent.go_to_slide(_CONTEXT, 3, "question about slide 3")
-    assert slides.index == 3
-    assert deck.slides[3].title in result
-
-
 async def test_go_to_slide_rejects_bad_index(deck: Deck) -> None:
-    agent, slides = await _presenter(deck)
+    h = Harness(deck)
     with pytest.raises(ToolError, match="out of range"):
-        await agent.go_to_slide(_CONTEXT, 99, "bad")
-    assert slides.index == 0
+        await h.agent.go_to_slide(_CONTEXT, 99, "bad")
+    assert h.slides.index == 0
 
 
 async def test_go_to_slide_routes_latest_user_turn(deck: Deck) -> None:
-    slides = SlideController(len(deck.slides))
     log = SessionLog()
-    log.record_user_turn("how is it treated?", slides.index)
-    agent = PresenterAgent(deck, slides, log, RecordingSink())
-    await agent.go_to_slide(_CONTEXT, 3, "treatment question")
+    log.record_user_turn("how is it treated?", 0)
+    h = Harness(deck, log)
+    await h.agent.go_to_slide(_CONTEXT, 3, "treatment question")
     assert log.turns[-1].slide_index == 3
 
 
+async def test_present_slide_moves_cursor_and_returns_no_reply(deck: Deck) -> None:
+    h = Harness(deck)
+    assert await h.agent.present_slide(_CONTEXT, 2) is None
+    assert h.presentation.cursor.slide == 2
+    assert h.presentation.mode == "presenting"
+    h.presentation.close()
+
+
+async def test_present_slide_rejects_bad_index(deck: Deck) -> None:
+    h = Harness(deck)
+    with pytest.raises(ToolError, match="out of range"):
+        await h.agent.present_slide(_CONTEXT, 9)
+
+
+async def test_present_slide_after_interruption_does_nothing(deck: Deck) -> None:
+    h = Harness(deck)
+    result = await h.agent.present_slide(_INTERRUPTED, 2)
+    assert result is not None
+    assert "interrupted" in result
+    assert h.presentation.mode == "idle"
+
+
+async def test_resume_presentation_continues(deck: Deck) -> None:
+    h = Harness(deck)
+    assert await h.agent.resume_presentation(_CONTEXT) is None
+    assert h.presentation.mode == "presenting"
+    h.presentation.close()
+
+
 async def test_flag_compliance_records_and_publishes(deck: Deck) -> None:
-    slides = SlideController(len(deck.slides))
-    await slides.go_to(2)
-    log = SessionLog()
-    sink = RecordingSink()
-    agent = PresenterAgent(deck, slides, log, sink)
-    result = await agent.flag_compliance("adverse_event", "my knee swelled after the injection")
-    (flag,) = log.flags
-    assert sink.events == [flag]
+    h = Harness(deck)
+    await h.slides.go_to(2)
+    result = await h.agent.flag_compliance("adverse_event", "my knee swelled after the injection")
+    (flag,) = h.log.flags
+    assert h.sink.events == [flag]
     assert flag.category == "adverse_event"
     assert flag.slide_index == 2
     assert "reporting line" in result
-    assert slides.index == 2
+    assert h.slides.index == 2
+
+
+async def test_llm_node_adds_state_note_without_touching_history(
+    deck: Deck, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[llm.ChatContext] = []
+
+    def fake_llm_node(
+        agent: Agent, chat_ctx: llm.ChatContext, tools: object, settings: object
+    ) -> list[str]:
+        seen.append(chat_ctx)
+        return []
+
+    monkeypatch.setattr(Agent.default, "llm_node", fake_llm_node)
+    h = Harness(deck)
+    await h.presentation.show(2)
+    history = llm.ChatContext()
+    history.add_message(role="user", content="what is on this slide?")
+    h.agent.llm_node(history, [], ModelSettings())
+    assert len(history.items) == 1
+    note = seen[0].items[-1]
+    assert isinstance(note, llm.ChatMessage)
+    assert note.role == "system"
+    assert f'On screen: slide index 2, "{deck.slides[2].title}"' in (note.text_content or "")

@@ -31,11 +31,25 @@ class Settings(BaseSettings):
     tts_model: str = "cartesia/sonic-3"
     tts_voice: str | None = None
 
+    # Own provider keys: when set, that component uses the provider's plugin directly instead
+    # of LiveKit Inference (see docs/CONTRACT.md section 2).
+    deepgram_api_key: SecretStr | None = None
+    deepgram_stt_model: str = "nova-3"
+    deepgram_tts_model: str = "aura-2-thalia-en"
+    google_api_key: SecretStr | None = None
+    google_llm_model: str = "gemini-2.5-flash"
+
     decks_dir: Path = DEFAULT_DECKS_DIR
 
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+
+
+def secret_value(secret: SecretStr | None) -> str | None:
+    """The secret, or None when unset or blank (e.g. ``KEY=`` in an env file)."""
+    value = secret.get_secret_value().strip() if secret is not None else ""
+    return value or None
 
 
 @lru_cache

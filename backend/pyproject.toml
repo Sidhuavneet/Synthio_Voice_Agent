@@ -11,6 +11,8 @@ dependencies = [
     "pydantic-settings>=2.6",
     "livekit-api>=1.0",
     "livekit-agents~=1.8.8",
+    "livekit-plugins-deepgram~=1.8.8",
+    "livekit-plugins-google~=1.8.8",
     "python-dotenv>=1.0",
 ]
 

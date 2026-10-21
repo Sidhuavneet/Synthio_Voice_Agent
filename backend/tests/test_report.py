@@ -97,6 +97,48 @@ def test_report_is_truncated_to_size_limit(deck: Deck) -> None:
     assert len(report.slides) == len(deck.slides)  # facts are never dropped
 
 
+def test_open_questions_always_have_a_follow_up(deck: Deck) -> None:
+    insights = _insights(
+        questions=[
+            InsightQuestion(question="Can I play on turf?", slide_index=4, answered=False),
+            InsightQuestion(question="How is it treated?", slide_index=3, answered=True),
+        ],
+        follow_ups=[],
+    )
+    report = assemble_report(deck, _log(), insights)
+    assert report.follow_ups == ["Follow up on the open question: Can I play on turf?"]
+    assert [q.answered for q in report.questions] == [False, True]
+
+
+def test_open_question_already_followed_up_is_not_repeated(deck: Deck) -> None:
+    insights = _insights(
+        questions=[InsightQuestion(question="Can I play on turf?", slide_index=4, answered=False)],
+        follow_ups=["Send guidance on whether she can play on turf"],
+    )
+    report = assemble_report(deck, _log(), insights)
+    assert report.follow_ups == [
+        "Send guidance on whether she can play on turf",
+        "Follow up on the open question: Can I play on turf?",
+    ]
+    insights = _insights(
+        questions=[InsightQuestion(question="Can I play on turf?", slide_index=4, answered=False)],
+        follow_ups=["Answer: can I play on turf"],
+    )
+    assert assemble_report(deck, _log(), insights).follow_ups == ["Answer: can I play on turf"]
+
+
+def test_truncation_never_leaves_an_open_question_without_follow_up(deck: Deck) -> None:
+    questions = [
+        InsightQuestion(question=f"Open question {i} " + "q" * 200, slide_index=0, answered=False)
+        for i in range(20)
+    ]
+    insights = _insights(questions=questions, follow_ups=[], interests=[])
+    report = assemble_report(deck, _log(), insights, max_bytes=4000)
+    assert len(report.model_dump_json(by_alias=True).encode()) <= 4000
+    for question in report.questions:
+        assert any(question.question in item for item in report.follow_ups)
+
+
 def test_insights_input_includes_turns_flags_and_transcript(deck: Deck) -> None:
     material = build_insights_input(deck, _log(), _history())
     assert "[slide 3] How is it treated?" in material
