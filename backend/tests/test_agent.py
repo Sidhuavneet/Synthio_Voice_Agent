@@ -6,8 +6,10 @@ from livekit import rtc
 from livekit.agents import FunctionTool, RunContext, ToolError
 
 from synthio_backend.agent.deck_selection import select_deck
+from synthio_backend.agent.events import AgentEvent
 from synthio_backend.agent.navigation import handle_navigate, parse_navigate_payload
 from synthio_backend.agent.presenter import PresenterAgent
+from synthio_backend.agent.session_log import SessionLog
 from synthio_backend.agent.slides import SlideController
 from synthio_backend.decks.models import Deck
 from synthio_backend.decks.repository import DeckRepository
@@ -70,10 +72,18 @@ def test_select_deck_falls_back_to_first(repository: DeckRepository, metadata: s
     assert select_deck(repository, metadata).id == "sample-deck"
 
 
-def test_presenter_exposes_slide_tools(deck: Deck) -> None:
-    agent = PresenterAgent(deck, SlideController(len(deck.slides)))
+class RecordingSink:
+    def __init__(self) -> None:
+        self.events: list[AgentEvent] = []
+
+    def publish(self, event: AgentEvent) -> None:
+        self.events.append(event)
+
+
+def test_presenter_exposes_tools(deck: Deck) -> None:
+    agent = PresenterAgent(deck, SlideController(len(deck.slides)), SessionLog(), RecordingSink())
     names = {tool.info.name for tool in agent.tools if isinstance(tool, FunctionTool)}
-    assert names == {"next_slide", "go_to_slide"}
+    assert names == {"next_slide", "go_to_slide", "flag_compliance"}
 
 
 class StubSpeechHandle:
@@ -96,7 +106,7 @@ _INTERRUPTED = cast(RunContext[None], StubRunContext(interrupted=True))
 async def _presenter(deck: Deck, start: int = 0) -> tuple[PresenterAgent, SlideController]:
     slides = SlideController(len(deck.slides))
     await slides.go_to(start)
-    return PresenterAgent(deck, slides), slides
+    return PresenterAgent(deck, slides, SessionLog(), RecordingSink()), slides
 
 
 async def test_next_slide_advances_and_returns_slide(deck: Deck) -> None:
@@ -139,3 +149,27 @@ async def test_go_to_slide_rejects_bad_index(deck: Deck) -> None:
     with pytest.raises(ToolError, match="out of range"):
         await agent.go_to_slide(_CONTEXT, 99, "bad")
     assert slides.index == 0
+
+
+async def test_go_to_slide_routes_latest_user_turn(deck: Deck) -> None:
+    slides = SlideController(len(deck.slides))
+    log = SessionLog()
+    log.record_user_turn("how is it treated?", slides.index)
+    agent = PresenterAgent(deck, slides, log, RecordingSink())
+    await agent.go_to_slide(_CONTEXT, 3, "treatment question")
+    assert log.turns[-1].slide_index == 3
+
+
+async def test_flag_compliance_records_and_publishes(deck: Deck) -> None:
+    slides = SlideController(len(deck.slides))
+    await slides.go_to(2)
+    log = SessionLog()
+    sink = RecordingSink()
+    agent = PresenterAgent(deck, slides, log, sink)
+    result = await agent.flag_compliance("adverse_event", "my knee swelled after the injection")
+    (flag,) = log.flags
+    assert sink.events == [flag]
+    assert flag.category == "adverse_event"
+    assert flag.slide_index == 2
+    assert "reporting line" in result
+    assert slides.index == 2

@@ -1,5 +1,6 @@
 """Builds LLM instructions and tool results from deck content."""
 
+from synthio_backend.agent.events import ComplianceCategory
 from synthio_backend.decks.models import Deck, Slide
 
 _CONTINUE_HINT = (
@@ -50,21 +51,34 @@ Keep each slide to roughly thirty seconds of speech.
 - When you finish a slide, invite questions in one short phrase, then call next_slide. The \
 tool result contains the next slide's content; present it straight away.
 - Only call next_slide after you have finished narrating the current slide.
+- Narrate a whole slide only when presenting it: after next_slide, or when the user switches \
+the screen themselves.
 
 # Questions and interruptions
-- The user may interrupt at any time. Stop presenting and answer their question concisely, in \
-one to three sentences.
+- The user may interrupt at any time. Stop presenting and answer their question.
 - If another slide is more relevant to the question, call go_to_slide with that slide's index \
 before answering, so the screen matches what you say.
-- After answering, ask whether they would like you to continue, then carry on from the \
-current slide with next_slide when they agree.
+- Answer in one to three sentences, grounded in the relevant slide. Do not narrate the slide \
+or repeat its speaker notes, even right after go_to_slide.
+- Then ask whether they would like you to continue, and carry on from the current slide with \
+next_slide when they agree.
 
-# Guardrails
-- Answer only from the deck content below and well-established general knowledge. If you are \
-unsure, say so rather than guessing.
-- This is educational content only: {deck.disclaimer} Never give personal medical advice, \
-diagnoses, or treatment plans; suggest the user consults a qualified clinician instead.
-- Politely steer off-topic requests back to the presentation.
+# Compliance
+- Answer only from the deck content below and well-established general knowledge consistent \
+with it. If you are unsure, say so rather than guessing.
+- This is educational content only: {deck.disclaimer}
+- Never give personal medical advice, dosing for an individual, or off-label claims.
+- If the user's message falls into one of these categories, call flag_compliance first, then \
+follow the tool result to deflect compliantly and offer to continue the presentation:
+  - off_label: using a medicine, product or treatment outside its approved use, dose or \
+population, or claims the deck does not support.
+  - personal_medical_advice: what the user or a specific person should do about their own \
+symptoms, injury, diagnosis, treatment or medication dose.
+  - adverse_event: the user reports a side effect, reaction or harm that they or someone \
+else experienced after a medicine, product or treatment.
+  - out_of_scope: requests unrelated to the topic of this talk.
+- General educational questions about the deck topic are not compliance issues; answer them \
+normally.
 
 # Deck ({slide_count} slides, indices 0 to {slide_count - 1})
 {slides}
@@ -90,8 +104,9 @@ def slide_tool_result(slide: Slide, slide_count: int) -> str:
 
 def jump_tool_result(slide: Slide, slide_count: int) -> str:
     return (
-        "The screen now shows this slide. Use it to answer the user's question concisely, then "
-        f"offer to continue the presentation.\n{render_slide(slide, slide_count)}"
+        "The screen now shows this slide. Do not present it. Answer the user's question in one "
+        "to three sentences using only the relevant detail below, then ask whether they would "
+        f"like you to continue.\n{render_slide(slide, slide_count)}"
     )
 
 
@@ -106,4 +121,29 @@ def navigation_instructions(slide: Slide, slide_count: int) -> str:
     return (
         "The user just switched the screen to another slide. Briefly acknowledge it and present "
         f"this slide.\n{render_slide(slide, slide_count)}\n{_flow_hint(slide, slide_count)}"
+    )
+
+
+_COMPLIANCE_DEFLECTIONS: dict[ComplianceCategory, str] = {
+    "off_label": (
+        "Say you can only discuss uses supported by this presentation and approved guidance, "
+        "so you cannot recommend or comment on that use, and suggest they ask their clinician."
+    ),
+    "personal_medical_advice": (
+        "Say you cannot give personal medical advice and that a qualified clinician who can "
+        "assess them is the right person to ask. Do not apply deck content to their situation."
+    ),
+    "adverse_event": (
+        "Thank them for sharing it. Do not assess whether the treatment caused it. Advise them "
+        "to contact their doctor, and to report it through the medicines regulator's or the "
+        "manufacturer's reporting line."
+    ),
+    "out_of_scope": "Politely say that is outside the topic of this talk.",
+}
+
+
+def compliance_tool_result(category: ComplianceCategory) -> str:
+    return (
+        f"Flag recorded. {_COMPLIANCE_DEFLECTIONS[category]} Keep it to one or two sentences, "
+        "then offer to continue the presentation."
     )
