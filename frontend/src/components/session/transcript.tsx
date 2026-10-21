@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSessionContext, useSessionMessages } from "@livekit/components-react";
+import type { ReceivedMessage } from "@livekit/components-react";
 import { cn } from "@/lib/cn";
 
 /** Distance from the bottom (px) within which new messages keep the view pinned. */
 const STICK_THRESHOLD_PX = 80;
 
-export function Transcript({ presenterName }: { presenterName: string }) {
-  const session = useSessionContext();
-  const { messages } = useSessionMessages(session);
+export interface TranscriptProps {
+  presenterName: string;
+  messages: ReceivedMessage[];
+}
+
+export function Transcript({ presenterName, messages }: TranscriptProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 

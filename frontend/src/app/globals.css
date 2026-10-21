@@ -20,6 +20,8 @@
   --color-danger: #c2283b;
   --color-danger-soft: #fdeef0;
   --color-success: #0f8a5f;
+  --color-warning: #a15c07;
+  --color-warning-soft: #fdf3e2;
 
   --shadow-card: 0 1px 2px rgb(11 21 51 / 0.04), 0 8px 24px -12px rgb(11 21 51 / 0.12);
   --shadow-stage: 0 1px 2px rgb(11 21 51 / 0.05), 0 24px 60px -24px rgb(11 21 51 / 0.25);
