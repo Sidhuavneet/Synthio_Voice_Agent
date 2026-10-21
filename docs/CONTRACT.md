@@ -31,8 +31,10 @@ Backend allows CORS from `FRONTEND_ORIGINS` (comma-separated, default `http://lo
 | `LLM_MODEL` | no | `google/gemini-2.5-flash` | LiveKit Inference LLM model id |
 | `TTS_MODEL` | no | `cartesia/sonic-3` | LiveKit Inference TTS model id |
 | `TTS_VOICE` | no | provider default | TTS voice id |
+| `DEEPGRAM_API_KEY` | no | — | If set: STT (`DEEPGRAM_STT_MODEL`, default `nova-3`) and TTS (`DEEPGRAM_TTS_MODEL`, default `aura-2-thalia-en`) use the Deepgram plugin directly instead of LiveKit Inference |
+| `GOOGLE_API_KEY` | no | — | If set: LLM uses the Google plugin (`GOOGLE_LLM_MODEL`, default `gemini-2.5-flash`) instead of LiveKit Inference |
 
-Only LiveKit Cloud credentials are needed: STT/LLM/TTS run through **LiveKit Inference** (`livekit.agents.inference`).
+Provider selection is per component: own provider key present → direct plugin, otherwise **LiveKit Inference** (`livekit.agents.inference`). The turn detector must not depend on an exhaustible cloud quota (use the local model if `inference.TurnDetector` is cloud-metered). The resolved providers are logged at worker start (never the keys).
 
 `frontend/.env.local` (template in `frontend/.env.example`): `NEXT_PUBLIC_API_URL`.
 
@@ -58,9 +60,15 @@ JSON keys are **camelCase** on the wire (Pydantic alias generator); Python field
       "index": 0,
       "title": "Why ACL injuries matter",
       "kicker": "The problem",           // short eyebrow label
-      "bullets": ["...", "..."],         // 2–4 short on-screen bullets
+      "intro": "One spoken lead-in sentence for the slide (<= 20 words).",
+      "points": [                        // 2–4, shown in order and narrated in the same order
+        {
+          "text": "Short on-screen bullet (<= 70 chars)",
+          "detail": "Very short paragraph shown under the bullet (<= 160 chars)",
+          "narration": "What the agent says for this point, verbatim (20–45 words, TTS-friendly)"
+        }
+      ],
       "stat": { "value": "2–8x", "label": "higher risk in female players" }, // optional, may be null
-      "speakerNotes": "What the agent says when presenting this slide (60–110 words).",
       "keywords": ["risk", "incidence", "female"], // helps the LLM route questions
       "sourceIds": [0, 2]                // indices into deck.sources backing this slide (may be empty)
     }
@@ -76,14 +84,14 @@ JSON keys are **camelCase** on the wire (Pydantic alias generator); Python field
 | GET | `/api/health` | — | `{ "status": "ok" }` |
 | GET | `/api/decks` | — | `DeckSummary[]` = `[{ id, title, subtitle, category, slideCount }]` |
 | GET | `/api/decks/{deckId}` | — | `Deck` (full schema above) |
-| POST | `/api/session` | `{ "deckId": string }` | `{ serverUrl, roomName, participantName, participantToken }` |
+| POST | `/api/session` | `{ "deckId": string, "resume"?: { "slideIndex": number, "presented": number[] } }` | `{ serverUrl, roomName, participantName, participantToken }` |
 
 Errors: `404 {"detail": "..."}` for unknown deck, `422` for validation, `503 {"detail": "LiveKit is not configured"}` when credentials are missing.
 
 `POST /api/session`:
 - Creates a unique room name `synthio-<deckId>-<shortuuid>` and participant identity `user-<shortuuid>`.
 - Token grants: `roomJoin, canPublish, canSubscribe, canPublishData`, TTL 15 min.
-- Token embeds a `RoomConfiguration` with one `RoomAgentDispatch(agent_name=AGENT_NAME, metadata='{"deckId":"<deckId>"}')` so the agent is dispatched automatically on join.
+- Token embeds a `RoomConfiguration` with one `RoomAgentDispatch(agent_name=AGENT_NAME, metadata='{"deckId":"<deckId>","resume":{...}|null}')` so the agent is dispatched automatically on join. `resume` is validated (indices in range) and passed through unchanged.
 
 ## 5. Realtime protocol (LiveKit room)
 
@@ -95,6 +103,8 @@ The **agent is the single source of truth** for the current slide.
 |---|---|
 | `slide.index` | current 0-based slide index as a string, e.g. `"2"` |
 | `deck.id` | deck id the agent loaded |
+| `slide.point` | index of the point currently being narrated as a string, `"-1"` when none (Q&A, idle) |
+| `slide.presented` | comma-separated indices of slides fully presented so far, e.g. `"0,1,2"` (used for resume + rail ticks) |
 
 The frontend reads these with `useParticipantAttributes` / `useVoiceAssistant().agent` and renders the matching slide.
 Built-in attributes (`lk.agent.state`) and transcriptions (`lk.transcription` text stream) are consumed via `@livekit/components-react` hooks — no custom protocol.
@@ -103,14 +113,15 @@ Built-in attributes (`lk.agent.state`) and transcriptions (`lk.transcription` te
 
 | Method | Payload (JSON string) | Response | Effect |
 |---|---|---|---|
-| `slides.navigate` | `{ "index": number }` | `{ "ok": true, "index": number }` or `{ "ok": false, "error": string }` | User clicked a slide/prev/next. Agent interrupts current speech, sets `slide.index`, and presents that slide. |
+| `slides.navigate` | `{ "index": number }` | `{ "ok": true, "index": number }` or `{ "ok": false, "error": string }` | User clicked a slide/prev/next. Agent interrupts, sets `slide.index`, moves the presentation cursor there. Not yet presented → presents it. Already presented → asks "We've covered this one, shall I go through it again?" and presents it after `REPLAY_CONFIRM_DELAY` (1.0 s) of user silence (yes by default). |
 
 ### Agent tools (LLM function tools, internal to backend)
 
 | Tool | Args | Effect |
 |---|---|---|
-| `go_to_slide` | `index: int`, `reason: str` | Validates range, updates `slide.index`. Used when a user question is best answered by another slide. |
-| `next_slide` | — | Advances by one (no-op error message at the end). |
+| `go_to_slide` | `index: int`, `reason: str` | Shows a slide to answer a question (display only; does NOT move the presentation cursor). |
+| `present_slide` | `index: int` | User asked to go to / repeat a slide: moves the cursor there and starts scripted narration from its first point. |
+| `resume_presentation` | — | User says continue/yes/go on: returns to the cursor slide (if the screen differs) and resumes scripted narration from the interrupted point. |
 | `flag_compliance` | `category: "off_label" \| "personal_medical_advice" \| "adverse_event" \| "out_of_scope"`, `question: str` | Records the flag in the session log and publishes a `compliance_flag` event. The agent then gives a compliant deflection (adverse events: thank, advise contacting their doctor and the regulator/manufacturer reporting line, never assess causality). |
 
 ### Agent → Frontend: events (data packets)
@@ -120,6 +131,7 @@ Reliable data packets on topic `synthio.events`, payload = UTF-8 JSON with a `ty
 | `type` | Fields | When |
 |---|---|---|
 | `compliance_flag` | `id: string`, `category`, `question: string`, `slideIndex: number`, `timestamp: number` (epoch ms) | Agent called `flag_compliance`. |
+| `session_error` | `code: "quota_exceeded" \| "provider_error" \| "internal"`, `message: string` (user-safe) | The agent session hit an unrecoverable error; published right before the agent leaves. |
 | `turn_metrics` | `turnId: string`, `sttMs: number \| null`, `eouMs: number \| null`, `llmTtftMs: number \| null`, `ttsTtfbMs: number \| null`, `totalMs: number \| null` | After each agent reply, from LiveKit `metrics_collected` events (`totalMs` = end-of-utterance delay + LLM TTFT + TTS TTFB). |
 
 ### Frontend → Agent: `session.report` RPC
@@ -143,23 +155,30 @@ SessionReport = {
 ```
 Facts (`durationSec`, `slides`, `complianceFlags`) come from the agent's session log; `summary`, `questions`, `followUps`, `interests` are LLM-generated (structured output) from the chat history. The frontend uses an RPC response timeout of 30 s, shows the report after the call, then disconnects.
 
-### Frontend-only: bullet highlighting
+### Point highlighting
 
-The frontend highlights the bullet (or stat) currently being spoken by matching the last ~12 words of the agent's audio-synced transcription against each bullet's tokens and the stat label (content-word overlap; keep previous highlight when no match clears the threshold). No protocol change.
+The frontend highlights the point whose index equals the agent's `slide.point` attribute (no text matching).
+
+### Frontend-only: local progress
+
+The frontend stores `{ deckId, slideIndex, presented, updatedAt }` per deck in `localStorage` (key `synthio.progress.<deckId>`) whenever `slide.index` / `slide.presented` change, and clears it when every slide has been presented or the user starts over. When starting a deck with saved progress the user chooses **Resume from slide N** (sends `resume`) or **Start over**. All storage access is wrapped in try/catch.
 
 ## 6. Conversation lifecycle
 
 1. User picks a deck → `POST /api/session` → frontend connects to room with mic on.
-2. Agent joins, reads `deckId` from job metadata, sets `slide.index="0"`, greets and presents slide 0.
-3. After each slide the agent briefly invites questions, then calls `next_slide` and continues.
-4. User asks a question anytime → speech interrupts the agent → agent answers, calling `go_to_slide` first if another slide is more relevant.
-5. After the last slide the agent summarises and invites final questions.
+2. Agent joins, reads `deckId`/`resume` from job metadata, greets (or "welcome back") and presents the start slide.
+3. **Presenting is code-driven and scripted** (approved content, verbatim): for each slide the agent speaks `intro`, then each point's `narration` in order via `session.say`, setting `slide.point` as each segment starts. No LLM call is needed to present.
+4. When a slide finishes uninterrupted, the agent waits `AUTO_ADVANCE_DELAY` (1.0 s); if the user has not started speaking it advances automatically. It never asks "any questions?" between slides (the greeting tells the user they can interrupt anytime).
+5. User speaks anytime → scripted speech is interrupted; the cursor keeps (slide, point). The LLM answers in 1–3 sentences (calling `go_to_slide` first if another slide fits better). After the reply finishes, if the user stays silent for `RESUME_DELAY` (2.5 s) the agent resumes automatically from the cursor (switching the screen back first, with a 3–6 word bridge such as "Back to where we were."). The LLM can also resume immediately via `resume_presentation`.
+6. After the last slide the agent gives a short LLM-generated wrap-up and invites final questions; no further auto-advance.
 6. User clicks "End & view report" → `session.report` RPC → report screen → disconnect.
 
 ## 7. Compliance rules (agent instructions)
 
-Answer only from deck content and well-established general knowledge consistent with it. Never give personal medical advice, dosing for an individual, or off-label claims. On any of the four categories call `flag_compliance` first, then deflect compliantly and offer to continue the presentation.
+Answer only from deck content and well-established general knowledge consistent with it. Two tiers:
+- **Answer with a caveat (no flag):** general educational questions, including ones phrased personally that the deck answers generally (e.g. "How long until I can play again?" → give the general timeline/criteria from the deck, then "your own clinician will judge your case").
+- **Flag + deflect:** only when answering would require an individual clinical decision (should *I* have surgery / take this dose), off-label use, a reported adverse event, or a clearly unrelated topic. Call `flag_compliance` first, then deflect in 1–2 sentences and continue.
 
 ## 8. Evals
 
-`uv run synthio-eval [--deck acl-football]` runs a checked-in dataset (`backend/evals/<deckId>.jsonl`: `{ "input": str, "expectSlide": int | null, "expectFlag": category | null }`) through the real agent LLM + tools via LiveKit Agents' testing API, prints routing accuracy and compliance precision/recall, and writes `backend/evals/results/<deckId>.json`. Requires LiveKit credentials; not part of `pytest`.
+`uv run synthio-eval [--deck acl-football]` runs a checked-in dataset (`backend/evals/<deckId>.jsonl`: `{ "input": str, "expectSlide": int | null, "expectFlag": category | null }`) through the real agent LLM + tools (provider per §2) via LiveKit Agents' testing API, prints routing accuracy and compliance precision/recall, and writes `backend/evals/results/<deckId>.json`. Requires LiveKit credentials; not part of `pytest`.
