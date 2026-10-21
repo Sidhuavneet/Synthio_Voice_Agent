@@ -134,7 +134,8 @@ function SessionLayout({
 
   return (
     // Fixed to the viewport on large screens so only the slide column and transcript scroll.
-    <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-5 px-4 py-4 sm:px-6 lg:h-dvh lg:min-h-0 lg:py-6">
+    // lg:flex-none stops the body's flex column from overriding h-dvh with content height.
+    <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-5 px-4 py-4 sm:px-6 lg:h-dvh lg:min-h-0 lg:flex-none lg:py-6">
       <header className="flex shrink-0 items-center justify-between gap-4">
         <BrandMark />
         <h1 className="sr-only">{deck.title}</h1>
