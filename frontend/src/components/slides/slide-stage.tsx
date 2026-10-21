@@ -1,8 +1,8 @@
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, CornerDownRight, Loader2, Pause } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/cn";
 import type { Citation } from "@/lib/deck";
-import type { Slide, SlidePoint } from "@/lib/types";
+import type { Slide, SlideChange, SlidePoint } from "@/lib/types";
 
 export type PresenterStatus = "connecting" | "live" | "unavailable";
 
@@ -13,6 +13,10 @@ export interface SlideStageProps {
   presenterStatus: PresenterStatus;
   /** Index of the point being narrated (`slide.point`), or null. */
   activePoint: number | null;
+  /** Point the user cut into, shown while narration is paused, or null. */
+  pausedPoint: number | null;
+  /** The question jump that brought this slide on screen, if any. */
+  jump: SlideChange | null;
   citations: Citation[];
 }
 
@@ -22,6 +26,8 @@ export function SlideStage({
   total,
   presenterStatus,
   activePoint,
+  pausedPoint,
+  jump,
   citations,
 }: SlideStageProps) {
   const position = `Slide ${slide.index + 1} of ${total}`;
@@ -56,6 +62,15 @@ export function SlideStage({
           className="flex flex-1 animate-slide-in flex-col gap-5 pt-5 xl:flex-row xl:items-center xl:gap-10"
         >
           <div className="min-w-0 flex-1 space-y-4">
+            {jump && (
+              <p className="inline-flex max-w-full items-start gap-1.5 rounded-2xl bg-accent-soft px-3 py-1.5 text-xs text-accent-strong">
+                <CornerDownRight aria-hidden className="mt-px size-3.5 shrink-0" />
+                <span className="min-w-0 text-pretty">
+                  <span className="font-semibold">Jumped from slide {jump.fromIndex + 1}</span>
+                  {jump.reason && <span> to answer: {jump.reason}</span>}
+                </span>
+              </p>
+            )}
             <div className="space-y-2">
               <p className="text-sm font-semibold tracking-[0.14em] text-accent uppercase">
                 {slide.kicker}
@@ -66,7 +81,12 @@ export function SlideStage({
             </div>
             <ol className="-mx-3 space-y-1">
               {slide.points.map((point, i) => (
-                <PointItem key={point.text} point={point} active={i === activePoint} />
+                <PointItem
+                  key={point.text}
+                  point={point}
+                  active={i === activePoint}
+                  paused={activePoint === null && i === pausedPoint}
+                />
               ))}
             </ol>
           </div>
@@ -99,22 +119,33 @@ export function SlideStage({
   );
 }
 
-function PointItem({ point, active }: { point: SlidePoint; active: boolean }) {
+interface PointItemProps {
+  point: SlidePoint;
+  active: boolean;
+  paused: boolean;
+}
+
+function PointItem({ point, active, paused }: PointItemProps) {
   return (
     <li
       aria-current={active || undefined}
       className={cn(
         "flex gap-3 rounded-xl px-3 py-1.5 transition-colors duration-500 ease-out",
         active && "bg-accent-soft",
+        paused && "bg-canvas ring-1 ring-line ring-inset",
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "mt-2.5 size-1.5 shrink-0 rounded-full bg-accent transition-transform duration-500",
-          active && "scale-150",
-        )}
-      />
+      {paused ? (
+        <Pause aria-hidden className="mt-1.5 size-3 shrink-0 fill-accent text-accent" />
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            "mt-2.5 size-1.5 shrink-0 rounded-full bg-accent transition-transform duration-500",
+            active && "scale-150",
+          )}
+        />
+      )}
       <div className="min-w-0 space-y-0.5">
         <p
           className={cn(
@@ -123,6 +154,11 @@ function PointItem({ point, active }: { point: SlidePoint; active: boolean }) {
           )}
         >
           {point.text}
+          {paused && (
+            <span className="ml-2 align-middle text-[11px] font-medium tracking-wide text-ink-muted uppercase">
+              Paused here
+            </span>
+          )}
         </p>
         <p className="text-sm leading-snug text-pretty text-ink-muted">{point.detail}</p>
       </div>

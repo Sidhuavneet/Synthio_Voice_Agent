@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   RoomAudioRenderer,
   SessionProvider,
@@ -15,6 +15,7 @@ import { ControlBar } from "@/components/session/control-bar";
 import { InsightsCard } from "@/components/session/insights-card";
 import { PresenterPanel } from "@/components/session/presenter-panel";
 import { StartAudioPrompt } from "@/components/session/start-audio-prompt";
+import { SuggestedQuestions } from "@/components/session/suggested-questions";
 import { SlideRail } from "@/components/slides/slide-rail";
 import { SlideStage, type PresenterStatus } from "@/components/slides/slide-stage";
 import { Alert } from "@/components/ui/alert";
@@ -23,12 +24,14 @@ import { Button } from "@/components/ui/button";
 import { useAgentEvents, type AgentEvents } from "@/hooks/use-agent-events";
 import { useAgentSession, type AgentSessionError } from "@/hooks/use-agent-session";
 import { useDeckProgress } from "@/hooks/use-deck-progress";
+import { useNarrationMark } from "@/hooks/use-narration-mark";
 import { useSessionReport } from "@/hooks/use-session-report";
 import { useSlideNavigation } from "@/hooks/use-slide-navigation";
 import { useSlideSync, type SlideSync } from "@/hooks/use-slide-sync";
 import { useSlideTimeline } from "@/hooks/use-slide-timeline";
 import type { Presentation } from "@/hooks/use-start-presentation";
 import { getSlideCitations } from "@/lib/deck";
+import { interruptedPoint, questionJumpTo, type SessionSpan } from "@/lib/timeline";
 import type { Deck, SessionErrorCode, SessionFacts } from "@/lib/types";
 
 const BACK_LABEL = "Back to decks";
@@ -78,9 +81,33 @@ function SessionScreen({ deck, ...props }: SessionScreenProps) {
     [deck.id, getTimeline, complianceFlags],
   );
   const report = useSessionReport(getFacts);
+  // When the presenter first synced, and on which slide: the start of the report timeline.
+  const start = useRef<{ at: number; slide: number } | null>(null);
+  const [span, setSpan] = useState<SessionSpan | null>(null);
+
+  useEffect(() => {
+    if (sync.isSynced && start.current === null) {
+      start.current = { at: Date.now(), slide: sync.index };
+    }
+  }, [sync.isSynced, sync.index]);
+
+  const endWithReport = () => {
+    if (start.current) {
+      setSpan({ startedAt: start.current.at, endedAt: Date.now(), startSlide: start.current.slide });
+    }
+    void report.requestReport();
+  };
 
   if (report.state.status !== "idle") {
-    return <SessionReportView deck={deck} state={report.state} onExit={props.onExit} />;
+    return (
+      <SessionReportView
+        deck={deck}
+        state={report.state}
+        timeline={events.timeline}
+        span={span}
+        onExit={props.onExit}
+      />
+    );
   }
 
   return (
@@ -91,7 +118,7 @@ function SessionScreen({ deck, ...props }: SessionScreenProps) {
         deck={deck}
         sync={sync}
         events={events}
-        onEndWithReport={() => void report.requestReport()}
+        onEndWithReport={endWithReport}
         {...props}
       />
     </>
@@ -115,10 +142,11 @@ function SessionLayout({
 }: SessionLayoutProps) {
   const session = useSessionContext();
   const agent = useAgent();
-  const { messages } = useSessionMessages(session);
+  const { messages, send } = useSessionMessages(session);
   const { index, isSynced } = sync;
   const slide = deck.slides[index];
   const navigation = useSlideNavigation();
+  const narration = useNarrationMark(index, sync.pointIndex, events.timeline.length);
   const [wasConnected, setWasConnected] = useState(false);
   const [agentWasConnected, setAgentWasConnected] = useState(false);
 
@@ -197,6 +225,8 @@ function SessionLayout({
             total={deck.slides.length}
             presenterStatus={presenterStatus}
             activePoint={sync.pointIndex}
+            pausedPoint={interruptedPoint(events.timeline, index, narration)}
+            jump={questionJumpTo(events.timeline, index, narration)}
             citations={getSlideCitations(deck, slide)}
           />
 
@@ -214,6 +244,12 @@ function SessionLayout({
             </p>
           )}
 
+          <SuggestedQuestions
+            questions={deck.suggestedQuestions}
+            onAsk={send}
+            disabled={presenterStatus !== "live"}
+          />
+
           <div className="mt-auto space-y-3 pt-1">
             <StartAudioPrompt />
             <ControlBar
@@ -227,7 +263,12 @@ function SessionLayout({
         <aside className="flex min-h-0 flex-col gap-4">
           {/* The presenter card takes all remaining height; the insights card never grows. */}
           <div className="flex h-[28rem] min-h-0 flex-col lg:h-auto lg:flex-1">
-            <PresenterPanel presenter={deck.presenter} messages={messages} />
+            <PresenterPanel
+              presenter={deck.presenter}
+              messages={messages}
+              timeline={events.timeline}
+              slides={deck.slides}
+            />
           </div>
           <InsightsCard latency={events.latency} complianceFlags={events.complianceFlags} />
         </aside>

@@ -9,8 +9,11 @@ import type {
   AgentEvent,
   ComplianceCategory,
   ComplianceFlag,
+  Interruption,
   SessionErrorCode,
   SessionErrorEvent,
+  SlideChange,
+  SlideTrigger,
   TurnMetrics,
 } from "@/lib/types";
 
@@ -76,6 +79,53 @@ function parseTurnMetrics(value: unknown): TurnMetrics | null {
   return { turnId, sttMs, eouMs, llmTtftMs, ttsTtfbMs, totalMs };
 }
 
+const SLIDE_TRIGGERS: ReadonlySet<string> = new Set<SlideTrigger>([
+  "question",
+  "user",
+  "auto",
+  "resume",
+]);
+
+const nullableString = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() ? value : null;
+
+function parseSlideChange(value: unknown): SlideChange | null {
+  if (!isRecord(value)) return null;
+  const { fromIndex, toIndex, trigger, reason, question, timestamp } = value;
+  if (
+    !isNonNegativeInteger(fromIndex) ||
+    !isNonNegativeInteger(toIndex) ||
+    typeof trigger !== "string" ||
+    !isFiniteNumber(timestamp)
+  ) {
+    return null;
+  }
+  return {
+    fromIndex,
+    toIndex,
+    // An unknown trigger from a newer agent still moved the slide.
+    trigger: SLIDE_TRIGGERS.has(trigger) ? (trigger as SlideTrigger) : "auto",
+    reason: nullableString(reason),
+    question: nullableString(question),
+    timestamp,
+  };
+}
+
+function parseInterruption(value: unknown): Interruption | null {
+  if (!isRecord(value)) return null;
+  const { kind, slideIndex, pointIndex, detectionMs, timestamp } = value;
+  if (
+    (kind !== "barge_in" && kind !== "backchannel") ||
+    !isNonNegativeInteger(slideIndex) ||
+    !(pointIndex === null || isNonNegativeInteger(pointIndex)) ||
+    !isFiniteNumber(detectionMs) ||
+    !isFiniteNumber(timestamp)
+  ) {
+    return null;
+  }
+  return { kind, slideIndex, pointIndex, detectionMs, timestamp };
+}
+
 const decoder = new TextDecoder();
 
 /** Decodes a `synthio.events` data packet (contract §5); returns null for unknown or malformed events. */
@@ -94,6 +144,14 @@ export function parseAgentEvent(payload: Uint8Array): AgentEvent | null {
     case "turn_metrics": {
       const metrics = parseTurnMetrics(value);
       return metrics && { type: "turn_metrics", ...metrics };
+    }
+    case "slide_changed": {
+      const change = parseSlideChange(value);
+      return change && { type: "slide_changed", ...change };
+    }
+    case "interruption": {
+      const interruption = parseInterruption(value);
+      return interruption && { type: "interruption", ...interruption };
     }
     default:
       return null;

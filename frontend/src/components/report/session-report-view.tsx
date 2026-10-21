@@ -1,6 +1,10 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 import {
   ArrowLeft,
+  Check,
+  Copy,
   CircleCheck,
   CircleHelp,
   Clock,
@@ -10,31 +14,44 @@ import {
   MessageCircleQuestion,
   ShieldAlert,
   Sparkles,
+  Waypoints,
 } from "lucide-react";
 import { ComplianceFlagItem } from "@/components/compliance/compliance-flag-item";
+import { FollowUpList } from "@/components/report/follow-up-list";
+import { SessionTimeline } from "@/components/report/session-timeline";
 import { SlideTimeChart, slideAnchorId } from "@/components/report/slide-time-chart";
 import { Alert } from "@/components/ui/alert";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { TimelineEntry } from "@/hooks/use-agent-events";
 import type { ReportState } from "@/hooks/use-session-report";
-import { formatDuration } from "@/lib/format";
-import type { Deck, SessionFacts, SessionInsights } from "@/lib/types";
+import { COMPLIANCE_CATEGORY_LABELS, formatDuration } from "@/lib/format";
+import { formatFollowUpEmail } from "@/lib/report";
+import { buildSessionTimeline, type SessionSpan } from "@/lib/timeline";
+import type { Deck, SessionFacts, SessionInsights, SessionReport } from "@/lib/types";
 
 export interface SessionReportViewProps {
   deck: Deck;
   state: Exclude<ReportState, { status: "idle" }>;
+  /** Slide changes and interruptions seen live, for the session timeline. */
+  timeline: TimelineEntry[];
+  /** Null if the presenter never synced. */
+  span: SessionSpan | null;
   onExit: () => void;
 }
 
 /** Post-session report (contract §5 `SessionReport`), with a loading and a facts-only fallback. */
-export function SessionReportView({ deck, state, onExit }: SessionReportViewProps) {
+export function SessionReportView({ deck, state, timeline, span, onExit }: SessionReportViewProps) {
   const facts: SessionFacts = state.status === "ready" ? state.report : state.facts;
   const insights: SessionInsights | null = state.status === "ready" ? state.report : null;
   const generating = state.status === "generating";
   // The LLM-generated sections are skeletons while generating and hidden if generation failed.
   const showInsights = generating || insights !== null;
   const slidesShown = facts.slides.filter((slide) => slide.timeSec > 0).length;
+  const slideTitle = (index: number) => deck.slides[index]?.title ?? `Slide ${index + 1}`;
+  const story =
+    span && buildSessionTimeline(span, timeline, facts.complianceFlags, (i) => `slide ${i + 1}`);
 
   const slideLink = (index: number) => (
     <a
@@ -50,10 +67,13 @@ export function SessionReportView({ deck, state, onExit }: SessionReportViewProp
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
       <header className="flex items-center justify-between gap-4">
         <BrandMark />
-        <Button variant="secondary" size="sm" onClick={onExit}>
-          <ArrowLeft aria-hidden />
-          Back to decks
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          {state.status === "ready" && <CopyEmailButton deck={deck} report={state.report} />}
+          <Button variant="secondary" size="sm" onClick={onExit}>
+            <ArrowLeft aria-hidden />
+            Back to decks
+          </Button>
+        </div>
       </header>
 
       <main className="mt-8 space-y-6 sm:mt-12">
@@ -107,6 +127,17 @@ export function SessionReportView({ deck, state, onExit }: SessionReportViewProp
             value={String(facts.complianceFlags.length)}
           />
         </dl>
+
+        {story && span && (
+          <ReportSection icon={<Waypoints aria-hidden />} title="Session timeline">
+            <SessionTimeline
+              segments={story.segments}
+              moments={story.moments}
+              durationSec={(span.endedAt - span.startedAt) / 1000}
+              slideTitle={slideTitle}
+            />
+          </ReportSection>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
           <div className="space-y-6">
@@ -170,7 +201,7 @@ export function SessionReportView({ deck, state, onExit }: SessionReportViewProp
             {showInsights && (
               <ReportSection icon={<ListChecks aria-hidden />} title="Follow-ups">
                 {insights ? (
-                  <BulletList items={insights.followUps} empty="No open items." />
+                  <FollowUpList items={insights.followUps} />
                 ) : (
                   <SkeletonLines count={2} />
                 )}
@@ -240,17 +271,32 @@ function ReportSection({
   );
 }
 
-function BulletList({ items, empty }: { items: string[]; empty: string }) {
-  if (items.length === 0) return <EmptyText>{empty}</EmptyText>;
+function CopyEmailButton({ deck, report }: { deck: Deck; report: SessionReport }) {
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = async () => {
+    const text = formatFollowUpEmail(
+      deck,
+      report,
+      (flag) => COMPLIANCE_CATEGORY_LABELS[flag.category],
+    );
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus("copied");
+    } catch {
+      setStatus("failed");
+    }
+  };
   return (
-    <ul className="space-y-2">
-      {items.map((item, i) => (
-        <li key={i} className="flex gap-3 text-sm text-ink-soft">
-          <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
-          <span className="text-pretty">{item}</span>
-        </li>
-      ))}
-    </ul>
+    <Button variant="secondary" size="sm" onClick={() => void copy()}>
+      {status === "copied" ? <Check aria-hidden /> : <Copy aria-hidden />}
+      <span aria-live="polite">
+        {status === "copied"
+          ? "Copied"
+          : status === "failed"
+            ? "Copy blocked by browser"
+            : "Copy follow-up email"}
+      </span>
+    </Button>
   );
 }
 

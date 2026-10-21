@@ -1,4 +1,4 @@
-import type { LatencyStats } from "@/hooks/use-agent-events";
+import type { InterruptionStats, LatencyStats } from "@/hooks/use-agent-events";
 import { cn } from "@/lib/cn";
 import { formatLatency } from "@/lib/format";
 import type { TurnMetrics } from "@/lib/types";
@@ -31,7 +31,7 @@ function stageTitle(stage: Stage, turn: TurnMetrics): string {
 
 /** Voice-to-voice latency of the last agent reply, its breakdown, and the session average. */
 export function LatencyPanel({ latency }: { latency: LatencyStats }) {
-  const { latest, averageTotalMs, turnCount } = latency;
+  const { latest, averageTotalMs, turnCount, interruptions } = latency;
   const segmentTotal = latest
     ? STAGES.reduce((sum, stage) => sum + (latest[stage.key] ?? 0), 0)
     : 0;
@@ -85,6 +85,29 @@ export function LatencyPanel({ latency }: { latency: LatencyStats }) {
         </div>
       ) : (
         <p className="text-sm text-ink-muted">Measured after the presenter&apos;s first reply.</p>
+      )}
+      <BargeInRow stats={interruptions} />
+    </div>
+  );
+}
+
+/** How fast talking over the presenter is recognised as a real interruption. */
+function BargeInRow({ stats }: { stats: InterruptionStats }) {
+  const { bargeIns, averageDetectionMs, backchannels } = stats;
+  return (
+    <div
+      title="Time from when you start talking over the presenter to LiveKit's adaptive model deciding it is a real interruption. Short acknowledgements like “mhm” are talked through."
+      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-line pt-3 text-xs"
+    >
+      <span className="text-ink-muted">Barge-in detection</span>
+      {bargeIns + backchannels === 0 ? (
+        <span className="text-ink-muted">Talk over the presenter to measure</span>
+      ) : (
+        <span className="text-ink-soft tabular-nums">
+          <span className="font-medium text-ink">{formatLatency(averageDetectionMs)}</span>
+          {" · "}
+          {bargeIns} {bargeIns === 1 ? "cut-in" : "cut-ins"} · {backchannels} talked through
+        </span>
       )}
     </div>
   );

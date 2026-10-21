@@ -40,6 +40,8 @@ export interface Deck {
   audience: string;
   presenter: Presenter;
   disclaimer: string;
+  /** Shown as "Try asking" chips (may be empty). */
+  suggestedQuestions: string[];
   slides: Slide[];
   sources: string[];
 }
@@ -97,6 +99,36 @@ export interface TurnMetrics {
   totalMs: number | null;
 }
 
+/**
+ * Why the slide changed: the agent jumped to answer a question, the user asked for or picked a
+ * slide, the presentation moved on by itself, or it returned to where it was after an answer.
+ */
+export type SlideTrigger = "question" | "user" | "auto" | "resume";
+
+export interface SlideChange {
+  fromIndex: number;
+  toIndex: number;
+  trigger: SlideTrigger;
+  /** The agent's short reason, for `question` jumps. */
+  reason: string | null;
+  /** The user turn being answered, for `question` jumps. */
+  question: string | null;
+  /** Epoch milliseconds. */
+  timestamp: number;
+}
+
+/** The user spoke over the agent: a real barge-in, or a backchannel it talked through. */
+export interface Interruption {
+  kind: "barge_in" | "backchannel";
+  slideIndex: number;
+  /** Point being narrated when the user spoke, or null. */
+  pointIndex: number | null;
+  /** From the onset of the user's speech to LiveKit's interruption verdict. */
+  detectionMs: number;
+  /** Epoch milliseconds. */
+  timestamp: number;
+}
+
 export type SessionErrorCode = "quota_exceeded" | "provider_error" | "internal";
 
 /** The agent hit an unrecoverable error and is about to leave. */
@@ -110,7 +142,9 @@ export interface SessionErrorEvent {
 export type AgentEvent =
   | ({ type: "compliance_flag" } & ComplianceFlag)
   | ({ type: "session_error" } & SessionErrorEvent)
-  | ({ type: "turn_metrics" } & TurnMetrics);
+  | ({ type: "turn_metrics" } & TurnMetrics)
+  | ({ type: "slide_changed" } & SlideChange)
+  | ({ type: "interruption" } & Interruption);
 
 export interface SlideTime {
   index: number;
@@ -132,11 +166,28 @@ export interface SessionFacts {
   complianceFlags: ComplianceFlag[];
 }
 
+export type FollowUpKind = "adverse_event" | "medical_information" | "follow_up";
+
+/** The four minimum criteria for a valid adverse event report, as heard in the session. */
+export interface AdverseEventCriteria {
+  identifiablePatient: boolean;
+  identifiableReporter: boolean;
+  suspectProduct: boolean;
+  adverseEvent: boolean;
+}
+
+export interface FollowUp {
+  kind: FollowUpKind;
+  text: string;
+  /** Only on `adverse_event` items, and null when not assessed. */
+  aeCriteria: AdverseEventCriteria | null;
+}
+
 /** LLM-generated part of the report. */
 export interface SessionInsights {
   summary: string;
   questions: ReportQuestion[];
-  followUps: string[];
+  followUps: FollowUp[];
   interests: string[];
 }
 

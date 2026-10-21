@@ -4,7 +4,8 @@ import { BarVisualizer, useAgent, type ReceivedMessage } from "@livekit/componen
 import { AgentStatus } from "@/components/session/agent-status";
 import { Transcript } from "@/components/session/transcript";
 import { Card } from "@/components/ui/card";
-import type { Presenter } from "@/lib/types";
+import type { TimelineEntry } from "@/hooks/use-agent-events";
+import type { Presenter, Slide } from "@/lib/types";
 
 function initials(name: string): string {
   return name
@@ -19,9 +20,11 @@ function initials(name: string): string {
 export interface PresenterPanelProps {
   presenter: Presenter;
   messages: ReceivedMessage[];
+  timeline: TimelineEntry[];
+  slides: Slide[];
 }
 
-export function PresenterPanel({ presenter, messages }: PresenterPanelProps) {
+export function PresenterPanel({ presenter, messages, timeline, slides }: PresenterPanelProps) {
   const agent = useAgent();
 
   return (
@@ -52,7 +55,12 @@ export function PresenterPanel({ presenter, messages }: PresenterPanelProps) {
           />
         </div>
       </div>
-      <Transcript presenterName={presenter.name} messages={messages} />
+      <Transcript
+        presenterName={presenter.name}
+        messages={messages}
+        timeline={timeline}
+        slides={slides}
+      />
     </Card>
   );
 }
