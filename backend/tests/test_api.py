@@ -1,5 +1,7 @@
 import json
+from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 from livekit.api import TokenVerifier
 
@@ -31,7 +33,8 @@ def test_get_deck_uses_camel_case(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["id"] == "sample-deck"
-    assert "speakerNotes" in body["slides"][0]
+    assert body["slides"][0]["intro"]
+    assert set(body["slides"][0]["points"][0]) == {"text", "detail", "narration"}
     assert body["slides"][1]["stat"] is None
 
 
@@ -65,7 +68,40 @@ def test_create_session(client: TestClient, settings: Settings) -> None:
     assert claims.room_config is not None
     (dispatch,) = claims.room_config.agents
     assert dispatch.agent_name == settings.agent_name
-    assert json.loads(dispatch.metadata) == {"deckId": "sample-deck"}
+    assert json.loads(dispatch.metadata) == {"deckId": "sample-deck", "resume": None}
+
+
+def _dispatch_metadata(body: dict[str, Any], settings: Settings) -> Any:
+    assert settings.livekit_api_secret is not None
+    claims = TokenVerifier(
+        settings.livekit_api_key, settings.livekit_api_secret.get_secret_value()
+    ).verify(body["participantToken"])
+    assert claims.room_config is not None
+    return json.loads(claims.room_config.agents[0].metadata)
+
+
+def test_create_session_passes_resume_through(client: TestClient, settings: Settings) -> None:
+    resume = {"slideIndex": 3, "presented": [0, 1, 2]}
+    response = client.post("/api/session", json={"deckId": "sample-deck", "resume": resume})
+    assert response.status_code == 200
+    assert _dispatch_metadata(response.json(), settings) == {
+        "deckId": "sample-deck",
+        "resume": resume,
+    }
+
+
+@pytest.mark.parametrize(
+    "resume",
+    [
+        {"slideIndex": 5, "presented": []},
+        {"slideIndex": 1, "presented": [0, 9]},
+        {"slideIndex": -1, "presented": []},
+        {"slideIndex": 1, "presented": "0,1"},
+    ],
+)
+def test_create_session_rejects_invalid_resume(client: TestClient, resume: object) -> None:
+    response = client.post("/api/session", json={"deckId": "sample-deck", "resume": resume})
+    assert response.status_code == 422
 
 
 def test_create_session_unknown_deck_is_404(client: TestClient) -> None:

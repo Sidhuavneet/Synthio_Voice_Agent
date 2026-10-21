@@ -18,11 +18,13 @@ class UserTurn:
 
 
 class SessionLog:
-    def __init__(self, clock: Clock = time.monotonic, wall_clock: Clock = time.time) -> None:
+    def __init__(
+        self, clock: Clock = time.monotonic, wall_clock: Clock = time.time, start_slide: int = 0
+    ) -> None:
         self._clock = clock
         self._wall_clock = wall_clock
         self._started_at = clock()
-        self._slide_index = 0
+        self._slide_index = start_slide
         self._slide_entered_at = self._started_at
         self._slide_seconds: dict[int, float] = {}
         self._turns: list[UserTurn] = []

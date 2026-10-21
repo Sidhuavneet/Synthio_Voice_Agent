@@ -1,6 +1,7 @@
 from pydantic import ConfigDict
 
 from synthio_backend.decks.models import CamelModel, DeckId
+from synthio_backend.session.resume import ResumeState
 
 
 class HealthResponse(CamelModel):
@@ -12,6 +13,7 @@ class SessionRequest(CamelModel):
     model_config = ConfigDict(validate_by_name=False)
 
     deck_id: DeckId
+    resume: ResumeState | None = None
 
 
 class SessionResponse(CamelModel):

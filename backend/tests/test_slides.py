@@ -11,20 +11,20 @@ class Recorder:
         self.changes.append(index)
 
 
-async def test_go_to_and_next_notify_changes() -> None:
+async def test_go_to_notifies_changes() -> None:
     recorder = Recorder()
     controller = SlideController(3, on_change=recorder)
     assert controller.index == 0
-    assert await controller.next() == 1
+    assert await controller.go_to(1) == 1
     assert await controller.go_to(2) == 2
-    assert controller.is_last
     assert recorder.changes == [1, 2]
 
 
 async def test_go_to_same_index_does_not_notify() -> None:
     recorder = Recorder()
-    controller = SlideController(3, on_change=recorder)
-    await controller.go_to(0)
+    controller = SlideController(3, on_change=recorder, start=2)
+    assert controller.index == 2
+    await controller.go_to(2)
     assert recorder.changes == []
 
 
@@ -36,11 +36,9 @@ async def test_go_to_out_of_range(index: int) -> None:
     assert controller.index == 0
 
 
-async def test_next_at_end_raises() -> None:
-    controller = SlideController(2)
-    await controller.next()
-    with pytest.raises(SlideIndexError, match="last slide"):
-        await controller.next()
+def test_rejects_invalid_start() -> None:
+    with pytest.raises(SlideIndexError):
+        SlideController(3, start=3)
 
 
 def test_requires_at_least_one_slide() -> None:

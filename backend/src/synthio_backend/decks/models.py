@@ -2,14 +2,44 @@
 
 from typing import Annotated, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 from pydantic.alias_generators import to_camel
 
 MIN_SLIDES = 5
 MAX_SLIDES = 6
+MIN_POINTS = 2
+MAX_POINTS = 4
+MAX_INTRO_WORDS = 20
+MAX_POINT_TEXT_CHARS = 70
+MAX_POINT_DETAIL_CHARS = 160
+MIN_NARRATION_WORDS = 20
+MAX_NARRATION_WORDS = 45
 
 NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 DeckId = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")]
+
+
+def _word_count_between(minimum: int, maximum: int) -> AfterValidator:
+    def check(text: str) -> str:
+        words = len(text.split())
+        if not minimum <= words <= maximum:
+            raise ValueError(f"must be {minimum} to {maximum} words, got {words}")
+        return text
+
+    return AfterValidator(check)
+
+
+IntroText = Annotated[NonEmptyStr, _word_count_between(1, MAX_INTRO_WORDS)]
+NarrationText = Annotated[
+    NonEmptyStr, _word_count_between(MIN_NARRATION_WORDS, MAX_NARRATION_WORDS)
+]
 
 
 class CamelModel(BaseModel):
@@ -31,13 +61,24 @@ class SlideStat(CamelModel):
     label: NonEmptyStr
 
 
+class Point(CamelModel):
+    text: Annotated[NonEmptyStr, StringConstraints(max_length=MAX_POINT_TEXT_CHARS)]
+    """Short on-screen bullet."""
+    detail: Annotated[NonEmptyStr, StringConstraints(max_length=MAX_POINT_DETAIL_CHARS)]
+    """Very short paragraph shown under the bullet."""
+    narration: NarrationText
+    """What the agent says for this point, verbatim."""
+
+
 class Slide(CamelModel):
     index: int = Field(ge=0)
     title: NonEmptyStr
     kicker: NonEmptyStr
-    bullets: list[NonEmptyStr] = Field(min_length=2, max_length=4)
+    intro: IntroText
+    """Spoken lead-in sentence for the slide."""
+    points: list[Point] = Field(min_length=MIN_POINTS, max_length=MAX_POINTS)
+    """Shown in order and narrated in the same order."""
     stat: SlideStat | None = None
-    speaker_notes: NonEmptyStr
     keywords: list[NonEmptyStr] = Field(default_factory=list)
     source_ids: list[int] = Field(default_factory=list)
 

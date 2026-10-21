@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class SlideNavigator(Protocol):
-    async def show_slide_for_user(self, index: int) -> None: ...
+    async def navigate(self, index: int) -> None: ...
 
 
 def parse_navigate_payload(payload: str) -> int:
@@ -27,7 +27,7 @@ def parse_navigate_payload(payload: str) -> int:
 async def handle_navigate(navigator: SlideNavigator, data: rtc.RpcInvocationData) -> str:
     try:
         index = parse_navigate_payload(data.payload)
-        await navigator.show_slide_for_user(index)
+        await navigator.navigate(index)
     # RuntimeError: the session is not running yet, or is shutting down.
     except (ValueError, RuntimeError) as exc:
         logger.warning("slides.navigate rejected: %s", exc)

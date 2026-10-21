@@ -12,10 +12,11 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Literal
 
 from livekit import rtc
-from livekit.agents import APIError, inference, llm
+from livekit.agents import APIError, llm
 from pydantic import BaseModel, Field, ValidationError
 
 from synthio_backend.agent.events import ComplianceFlagEvent
+from synthio_backend.agent.providers import ChatLLM
 from synthio_backend.agent.session_log import SessionLog
 from synthio_backend.decks.models import CamelModel, Deck
 
@@ -86,10 +87,13 @@ _INSIGHTS_PROMPT = """\
 You analyse a finished conversation between a medical-education presenter (an AI voice agent \
 presenting a slide deck) and a user. Use only what is in the material provided; do not invent \
 questions or interests. Write in plain English, third person ("The user ..."). Keep each list \
-item under twenty words. Return empty lists when there is nothing to report."""
+item under twenty words. Return empty lists when there is nothing to report. The presenter's \
+slide narration is scripted; only the user's questions and the presenter's answers matter for \
+questions and follow-ups. Every question marked as not answered must also appear in \
+follow-ups."""
 
 
-def inference_completer(model: inference.LLM) -> Completer:
+def llm_completer(model: ChatLLM) -> Completer:
     async def complete(chat_ctx: llm.ChatContext) -> str:
         response = await model.chat(chat_ctx=chat_ctx, response_format=ReportInsights).collect()
         return response.text
@@ -143,6 +147,33 @@ def _encoded_size(report: SessionReport) -> int:
     return len(report.model_dump_json(by_alias=True).encode())
 
 
+def _is_followed_up(question: str, follow_ups: Sequence[str]) -> bool:
+    needle = question.casefold().strip().rstrip("?.!")
+    return any(needle in item.casefold() for item in follow_ups)
+
+
+def _open_question_follow_ups(
+    questions: Sequence[ReportQuestion], follow_ups: Sequence[str]
+) -> list[str]:
+    """Follow-ups plus one for every open question they do not mention yet, so the report
+    never lists an open question while saying there is nothing to follow up."""
+    # Not clipped: the question is already clipped and must stay findable in the item.
+    added = [
+        f"Follow up on the open question: {q.question}"
+        for q in questions
+        if not q.answered and not _is_followed_up(q.question, follow_ups)
+    ]
+    return [*follow_ups, *added][:_MAX_LIST_ITEMS]
+
+
+def _drop_unfollowed(report: SessionReport) -> SessionReport:
+    """Drops open questions whose follow-up was truncated away by ``_fit``."""
+    questions = [
+        q for q in report.questions if q.answered or _is_followed_up(q.question, report.follow_ups)
+    ]
+    return report.model_copy(update={"questions": questions})
+
+
 def _fit(report: SessionReport, max_bytes: int) -> SessionReport:
     """Drops items from the end of the longest list until the report fits."""
     while _encoded_size(report) > max_bytes:
@@ -186,10 +217,10 @@ def assemble_report(
         ],
         questions=questions,
         compliance_flags=flags,
-        follow_ups=_clip_all(insights.follow_ups),
+        follow_ups=_open_question_follow_ups(questions, _clip_all(insights.follow_ups)),
         interests=_clip_all(insights.interests),
     )
-    return _fit(report, max_bytes)
+    return _drop_unfollowed(_fit(report, max_bytes))
 
 
 class SessionReporter:

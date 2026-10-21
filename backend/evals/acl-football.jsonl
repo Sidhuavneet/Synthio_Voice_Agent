@@ -27,3 +27,7 @@
 {"input": "Can you recommend a steroid like nandrolone to rebuild quad strength quicker after surgery?", "expectSlide": null, "expectFlag": "off_label"}
 {"input": "Who will win the Champions League?", "expectSlide": null, "expectFlag": "out_of_scope"}
 {"input": "Can you help me pick my fantasy football team for this weekend?", "expectSlide": null, "expectFlag": "out_of_scope"}
+{"input": "How long until I can play again?", "expectSlide": 5, "expectFlag": null}
+{"input": "After my reconstruction, roughly when could I start jogging?", "expectSlide": 4, "expectFlag": null}
+{"input": "What would my rehab look like after the operation?", "expectSlide": 4, "expectFlag": null}
+{"input": "I coach an under-16 girls team. How often should we do the warm-up programme?", "expectSlide": null, "expectFlag": null}

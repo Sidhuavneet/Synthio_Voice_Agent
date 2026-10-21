@@ -14,17 +14,33 @@
       "index": 0,
       "title": "Why ACL injuries matter",
       "kicker": "The problem",
-      "bullets": [
-        "Female players have about twice the ACL injury rate of males",
-        "One of the most common season-ending injuries in football",
-        "Typical layoff of 9–12 months after reconstruction",
-        "High-profile cases: Putellas, Mead, Williamson, van Dijk"
+      "intro": "Let's start with why this knee ligament matters so much in football.",
+      "points": [
+        {
+          "text": "Female players have about twice the ACL injury rate of males",
+          "detail": "Per hour of football, women rupture the ACL about 2.2 times as often as men, according to a 2019 meta-analysis.",
+          "narration": "For every hour of football played, female players rupture the anterior cruciate ligament, or ACL, at roughly twice the rate of male players."
+        },
+        {
+          "text": "One of the most common season-ending injuries in football",
+          "detail": "The ACL is the knee's main stabiliser: it stops the shin bone sliding forward and twisting under the thigh bone.",
+          "narration": "The ACL is the main stabiliser that stops the shin bone sliding forward and twisting under the thigh bone. When it tears, a player usually loses most of a season."
+        },
+        {
+          "text": "Typical layoff of 9–12 months after reconstruction",
+          "detail": "In men's professional football, only 65% of players are still playing at the top level three years after an ACL rupture.",
+          "narration": "Recovery after reconstruction usually takes nine to twelve months. In men's professional football, only about two thirds of players still play at the top level three years later."
+        },
+        {
+          "text": "High-profile cases: Putellas, Mead, Williamson, van Dijk",
+          "detail": "Within about a year, the women's game lost Alexia Putellas, Vivianne Miedema, Beth Mead and Leah Williamson to ACL tears.",
+          "narration": "Within about a year, the women's game lost Alexia Putellas, Vivianne Miedema, Beth Mead and Leah Williamson, and Virgil van Dijk is a familiar case from the men's game. Happily, much of this risk can be reduced."
+        }
       ],
       "stat": {
         "value": "~2x",
         "label": "higher ACL injury rate per exposure in female players"
       },
-      "speakerNotes": "The anterior cruciate ligament, or ACL, is the main stabiliser that stops the shin bone sliding forward and twisting under the thigh bone. When it tears, a player usually loses most of a season, and often more. For every hour of football played, female players rupture it at roughly twice the rate of male players. Within about a year, the women's game lost Alexia Putellas, Vivianne Miedema, Beth Mead and Leah Williamson to this injury, and Virgil van Dijk is a well known example from the men's game. The good news is that much of this risk can be reduced.",
       "keywords": [
         "risk",
         "incidence",
@@ -43,17 +59,33 @@
       "index": 1,
       "title": "How the ACL tears",
       "kicker": "Mechanism",
-      "bullets": [
-        "Most tears happen without a direct blow to the knee",
-        "Cutting, pivoting or landing on a planted foot",
-        "Knee collapses inward (dynamic valgus) with rotation",
-        "Common triggers: pressing, regaining balance after a kick, landing"
+      "intro": "So how does it actually happen? Surprisingly, usually without anyone touching the knee.",
+      "points": [
+        {
+          "text": "Most tears happen without a direct blow to the knee",
+          "detail": "Video analysis of 134 injuries in professional men's football found about 88% involved no direct contact to the knee.",
+          "narration": "Video analysis of professional players shows that nearly nine in ten tears involve no direct knee contact, although many follow a push or a tackle to the body."
+        },
+        {
+          "text": "Cutting, pivoting or landing on a planted foot",
+          "detail": "The foot stays fixed on the ground while the body changes direction, for example when cutting sharply or landing from a header.",
+          "narration": "The classic picture is a player cutting sharply, pivoting, or landing from a header, with the foot planted firmly on the ground."
+        },
+        {
+          "text": "Knee collapses inward (dynamic valgus) with rotation",
+          "detail": "The shin rotates and the trunk often leans sideways. Players describe a pop, rapid swelling and a feeling that the knee gives way.",
+          "narration": "The knee collapses inward, the shin rotates, and the body often leans sideways. Clinicians call that inward collapse dynamic valgus. Players often hear a pop, then notice rapid swelling."
+        },
+        {
+          "text": "Common triggers: pressing, regaining balance after a kick, landing",
+          "detail": "Because the mechanism is about movement control, it is something players can train.",
+          "narration": "Video studies point to three common situations, pressing an opponent, regaining balance after a kick, and landing. Because this is about movement control, it is something we can train."
+        }
       ],
       "stat": {
         "value": "~88%",
         "label": "of ACL tears in professional men's football involve no direct knee contact"
       },
-      "speakerNotes": "Most ACL tears happen without a direct blow to the knee. Video analysis of professional players shows that nearly nine in ten involve no direct knee contact, though many follow a push or tackle to the body. The classic picture is a player pressing an opponent, cutting sharply, or landing from a header on a planted foot. The knee collapses inward, the shin rotates, and the body is often leaning sideways. Clinicians call that inward collapse dynamic valgus. Players often describe hearing a pop, followed by rapid swelling and a feeling that the knee gives way. Because the mechanism is about movement control, it is something we can train.",
       "keywords": [
         "mechanism",
         "how",
@@ -72,17 +104,33 @@
       "index": 2,
       "title": "Prevention works: FIFA 11+",
       "kicker": "Prevention",
-      "bullets": [
-        "20-minute warm-up: running, strength, plyometrics, balance",
-        "Use it all season, in every age group",
-        "Biggest benefit with high adherence, ideally 2+ sessions a week",
-        "Neuromuscular training roughly halves ACL injury risk"
+      "intro": "The best treatment for an ACL tear is the one you never need.",
+      "points": [
+        {
+          "text": "20-minute warm-up: running, strength, plyometrics, balance",
+          "detail": "FIFA 11+ is free and combines running drills, strength work such as Nordic hamstring curls, jump-landing technique and balance.",
+          "narration": "FIFA eleven plus is a free, twenty minute warm up built around running drills, strength work such as Nordic hamstring curls, jumping and landing technique, and balance."
+        },
+        {
+          "text": "Use it all season, in every age group",
+          "detail": "It works best as the team's standard warm-up. Teaching players to land softly, with knees over toes, is central.",
+          "narration": "It is designed to be the standard warm up, all season long, in every age group. Teaching players to land softly, with their knees over their toes, is central."
+        },
+        {
+          "text": "Biggest benefit with high adherence, ideally 2+ sessions a week",
+          "detail": "Teams that complete the programme at least twice a week, every week, see the largest reductions in injury.",
+          "narration": "Adherence matters. Teams that do it at least twice a week, every week, get the biggest benefit, so it pays to make it a fixed part of training."
+        },
+        {
+          "text": "Neuromuscular training roughly halves ACL injury risk",
+          "detail": "A meta-analysis found about 39% fewer injuries overall with FIFA 11+, and programmes like it cut ACL injuries by about half.",
+          "narration": "Across trials, teams using it had roughly forty percent fewer injuries overall, and neuromuscular programmes like it cut ACL injuries by about half."
+        }
       ],
       "stat": {
         "value": "~39%",
         "label": "fewer injuries overall in teams using FIFA 11+ (meta-analysis)"
       },
-      "speakerNotes": "The best treatment for an ACL tear is the one you never need. FIFA eleven plus is a free, twenty minute warm-up built around running drills, strength work such as Nordic hamstring curls, jumping and landing technique, and balance. Across trials, teams using it had roughly forty percent fewer injuries overall, and neuromuscular programmes like it cut ACL injuries by about half. Adherence matters too. Teams that do it at least twice a week, as the standard warm-up all season long, get the biggest benefit. Teaching players to land softly with knees over toes is central.",
       "keywords": [
         "prevention",
         "FIFA 11+",
@@ -102,14 +150,30 @@
       "index": 3,
       "title": "Diagnosis and treatment",
       "kicker": "Diagnosis & treatment",
-      "bullets": [
-        "Lachman test is the most sensitive clinical exam; MRI confirms",
-        "Look for associated meniscus and cartilage damage",
-        "Grafts: patellar tendon, hamstring or quadriceps tendon",
-        "Reconstruction is standard for players returning to pivoting sport"
+      "intro": "If a tear does happen, diagnosis starts with the player's story and a careful examination.",
+      "points": [
+        {
+          "text": "Lachman test is the most sensitive clinical exam; MRI confirms",
+          "detail": "The clinician gently pulls the shin forward with the knee slightly bent. Pooled sensitivity is about 85% and specificity 94%.",
+          "narration": "In the Lachman test, the clinician gently pulls the shin forward with the knee slightly bent. It is the most sensitive bedside test, and an MRI scan then confirms the tear."
+        },
+        {
+          "text": "Look for associated meniscus and cartilage damage",
+          "detail": "Damage to the meniscus and joint cartilage often accompanies an ACL tear, and MRI helps to find it.",
+          "narration": "The scan also checks for damage to the meniscus and the joint cartilage, because these injuries commonly happen together with an ACL tear."
+        },
+        {
+          "text": "Grafts: patellar tendon, hamstring or quadriceps tendon",
+          "detail": "In reconstruction, the torn ligament is replaced with a graft taken from the patellar tendon, the hamstrings or the quadriceps tendon.",
+          "narration": "In reconstruction, the surgeon replaces the torn ligament with a graft, usually taken from the patellar tendon, the hamstrings, or the quadriceps tendon."
+        },
+        {
+          "text": "Reconstruction is standard for players returning to pivoting sport",
+          "detail": "Some less active people do well with structured rehabilitation alone, and good surgery always depends on good rehab.",
+          "narration": "For footballers who want to return to cutting and pivoting, surgery is the usual choice. Some less active people do well with rehabilitation alone, and good surgery always depends on good rehab."
+        }
       ],
       "stat": null,
-      "speakerNotes": "Diagnosis starts with the story and a careful examination. The Lachman test, where the clinician gently pulls the shin forward with the knee slightly bent, is the most sensitive bedside test. An MRI scan confirms the tear and checks for damage to the meniscus and cartilage, which is common. For footballers who want to return to cutting and pivoting, surgical reconstruction is the usual choice, using a graft from the patellar tendon, the hamstrings or the quadriceps tendon. Some less active people do well with structured rehabilitation alone, and good surgery always depends on good rehab.",
       "keywords": [
         "diagnosis",
         "Lachman",
@@ -128,17 +192,33 @@
       "index": 4,
       "title": "The rehab timeline",
       "kicker": "Rehabilitation",
-      "bullets": [
-        "Weeks 0–2: control swelling, full extension, quad activation",
-        "Weeks 2–12: strength, balance, normal gait",
-        "Months 3–6: running, jumping, change of direction",
-        "Months 6–9+: sport-specific drills, then full training"
+      "intro": "After surgery comes the long part, rehabilitation, which is driven by criteria, not just the calendar.",
+      "points": [
+        {
+          "text": "Weeks 0–2: control swelling, full extension, quad activation",
+          "detail": "Early goals are calming the swelling, getting the knee fully straight and switching the quadriceps back on.",
+          "narration": "In the first two weeks, the goals are calming the swelling, getting the knee fully straight, and switching the quadriceps muscles back on."
+        },
+        {
+          "text": "Weeks 2–12: strength, balance, normal gait",
+          "detail": "Over the next couple of months, strength and balance are rebuilt and a normal walking pattern is restored.",
+          "narration": "Over the next couple of months, the focus moves to rebuilding strength and balance, and restoring a normal walking pattern."
+        },
+        {
+          "text": "Months 3–6: running, jumping, change of direction",
+          "detail": "From around three months, if strength allows, players start straight-line running, then jumping and changing direction.",
+          "narration": "From around three months, if strength allows, players start straight line running, then gradually progress to jumping and changing direction."
+        },
+        {
+          "text": "Months 6–9+: sport-specific drills, then full training",
+          "detail": "Guidelines recommend at least nine months before returning to matches. Earlier return carries a much higher reinjury risk.",
+          "narration": "From six months, the work becomes football specific, building up to full team training. Returning to matches before about nine months is linked to a much higher chance of reinjury."
+        }
       ],
       "stat": {
         "value": "9+ months",
         "label": "recommended minimum before return to matches (evidence-based)"
       },
-      "speakerNotes": "Rehabilitation is a long journey, and it is driven by criteria, not just the calendar. In the first two weeks the goals are calming the swelling, getting the knee fully straight and switching the quadriceps back on. Over the next couple of months we rebuild strength and balance and restore a normal walking pattern. From around three months, if strength allows, players start straight line running, then jumping and changing direction. From six months the work becomes football specific, progressing to full team training. Returning to matches before about nine months is associated with a much higher chance of reinjury.",
       "keywords": [
         "rehab",
         "rehabilitation",
@@ -158,17 +238,33 @@
       "index": 5,
       "title": "Return to play and reinjury",
       "kicker": "Return to play",
-      "bullets": [
-        "Quad strength and hop tests ≥90% of the uninjured leg",
-        "Psychological readiness, measured with the ACL-RSI scale",
-        "Only 65% return to their pre-injury level of sport",
-        "Waiting to 9 months and passing criteria cuts reinjury sharply"
+      "intro": "Finally, getting back on the pitch, because returning to play is a decision, not a date.",
+      "points": [
+        {
+          "text": "Quad strength and hop tests ≥90% of the uninjured leg",
+          "detail": "The injured leg should reach at least 90% of the other leg on quadriceps strength and on a series of hop tests.",
+          "narration": "We want the injured leg to reach at least ninety percent of the other leg, both on quadriceps strength and on a series of hop tests."
+        },
+        {
+          "text": "Psychological readiness, measured with the ACL-RSI scale",
+          "detail": "Confidence and fear of reinjury are measured with the ACL Return to Sport after Injury scale.",
+          "narration": "Physical tests are not enough on their own, so we also measure the player's confidence and fear of reinjury on a psychological readiness scale."
+        },
+        {
+          "text": "Only 65% return to their pre-injury level of sport",
+          "detail": "About two thirds of athletes regain their previous level, and young athletes face a real risk of a second ACL injury.",
+          "narration": "Only about two thirds of athletes get back to their previous level of sport, and young athletes face a real risk of a second ACL injury."
+        },
+        {
+          "text": "Waiting to 9 months and passing criteria cuts reinjury sharply",
+          "detail": "Delaware-Oslo cohort: each month of delay, up to 9 months, cut reinjury by 51%. Meeting return criteria cut risk by 84%.",
+          "narration": "In one landmark study, each month that return was delayed, up to nine months, cut the reinjury rate by about half. Patience and good criteria give players the best chance of a long career."
+        }
       ],
       "stat": {
         "value": "51%",
         "label": "lower reinjury rate per month return is delayed, up to 9 months"
       },
-      "speakerNotes": "Returning to play is a decision, not a date. We want the injured leg to reach at least ninety percent of the other leg on quadriceps strength and hop tests, along with confidence measured on a psychological readiness scale. Only about two thirds of athletes return to their previous level of sport, and young athletes face a real risk of a second ACL injury. In one landmark study, each month that return was delayed, up to nine months, cut the reinjury rate by about half, and passing return to sport criteria lowered risk dramatically. Patience and good criteria give players the best chance of a long career.",
       "keywords": [
         "return to play",
         "return to sport",
