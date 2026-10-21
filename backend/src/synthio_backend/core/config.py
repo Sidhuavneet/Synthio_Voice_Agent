@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from pydantic import SecretStr
@@ -23,7 +24,10 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8500
 
+    # Comma-separated exact origins (e.g. the Vercel production URL), plus an optional regex
+    # for preview deploys such as ``https://.*\.vercel\.app``.
     frontend_origins: str = "http://localhost:3000"
+    frontend_origin_regex: str | None = None
     agent_name: str = "synthio-presenter"
 
     stt_model: str = "deepgram/nova-3"
@@ -37,13 +41,23 @@ class Settings(BaseSettings):
     deepgram_stt_model: str = "nova-3"
     deepgram_tts_model: str = "aura-2-thalia-en"
     google_api_key: SecretStr | None = None
-    google_llm_model: str = "gemini-2.5-flash"
+    google_llm_model: str = "gemini-3.5-flash"
+    # Gemini 3+ thinking level; minimal keeps voice latency low. Blank sends no thinking
+    # config. Ignored for models that take a token budget instead.
+    google_thinking_level: Literal["", "minimal", "low", "medium", "high"] = "minimal"
 
     decks_dir: Path = DEFAULT_DECKS_DIR
 
     @property
     def cors_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.frontend_origins.split(",") if origin.strip()]
+        # Browsers send origins without a trailing slash, so a pasted "https://x.app/" matches.
+        origins = (origin.strip().rstrip("/") for origin in self.frontend_origins.split(","))
+        return [origin for origin in origins if origin]
+
+    @property
+    def cors_origin_regex(self) -> str | None:
+        pattern = (self.frontend_origin_regex or "").strip()
+        return pattern or None
 
 
 def secret_value(secret: SecretStr | None) -> str | None:

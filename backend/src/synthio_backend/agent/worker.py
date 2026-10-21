@@ -4,6 +4,7 @@ import asyncio
 import functools
 import logging
 import time
+from typing import Any
 
 from livekit.agents import (
     AgentServer,
@@ -49,12 +50,12 @@ from synthio_backend.agent.protocol import (
     SLIDE_PRESENTED_ATTRIBUTE,
 )
 from synthio_backend.agent.providers import (
-    ChatLLM,
-    build_llm,
     build_stt,
     build_tts,
     build_turn_detector,
     describe_providers,
+    llm_chain,
+    with_llm_fallback,
 )
 from synthio_backend.agent.report import SessionReporter, handle_report, llm_completer
 from synthio_backend.agent.session_log import SessionLog
@@ -81,13 +82,13 @@ def _prewarm(proc: JobProcess) -> None:
     settings = get_settings()
     # Load and validate decks once per process so a broken deck file fails at startup.
     proc.userdata[_DECK_REPOSITORY_KEY] = DeckRepository.from_directory(settings.decks_dir)
-    logger.info("resolved providers: %s", describe_providers(settings))
+    logger.info("provider failover chains: %s", describe_providers(settings))
 
 
 server = AgentServer(setup_fnc=_prewarm, initialize_process_timeout=_INITIALIZE_PROCESS_TIMEOUT_S)
 
 
-def _build_session(settings: Settings, model: ChatLLM) -> AgentSession[None]:
+def _build_session(settings: Settings, model: llm.LLM[Any]) -> AgentSession[None]:
     return AgentSession(
         stt=build_stt(settings),
         llm=model,
@@ -252,15 +253,15 @@ async def presenter_session(ctx: JobContext) -> None:
         )
 
     slides = SlideController(len(deck.slides), on_change=on_slide_change, start=start_slide)
-    model = build_llm(settings)
-    session = _build_session(settings, model)
+    models = llm_chain(settings)
+    session = _build_session(settings, with_llm_fallback(models))
     presentation = PresentationController(
         deck, slides, SessionSpeech(session), RoomProgress(participant), resume=resume
     )
     presenter = PresenterAgent(deck, slides, presentation, log, events)
     _observe_session(session, log, slides, events, presentation, _SessionFailure(ctx, events))
     reporter = SessionReporter(
-        deck, log, llm_completer(model), history=lambda: session.history.items
+        deck, log, llm_completer(models), history=lambda: session.history.items
     )
     # Registered before start so early calls get a contract reply, not "unsupported".
     participant.register_rpc_method(

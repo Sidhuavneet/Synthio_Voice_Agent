@@ -17,10 +17,13 @@ Then fill in `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` in `.env`
 
 ### Providers
 
-Each component picks its provider separately (resolved choices are logged when a job process
-starts, never the keys):
+Each component has an ordered failover chain: the own-key provider first (when its key is set),
+LiveKit Inference last. With two entries LiveKit's `FallbackAdapter` switches to the next one at
+runtime when a provider fails (e.g. a 429 or spent quota) and switches back once it recovers.
+The chains are logged when a job process starts, never the keys, e.g.
+`"stt": "deepgram:nova-3 -> inference:deepgram/nova-3"`.
 
-| Component | Own key set | Otherwise |
+| Component | First, if its key is set | Fallback (always) |
 |---|---|---|
 | Speech-to-text | `DEEPGRAM_API_KEY` → Deepgram plugin (`DEEPGRAM_STT_MODEL`) | LiveKit Inference (`STT_MODEL`) |
 | LLM | `GOOGLE_API_KEY` → Google Gemini plugin (`GOOGLE_LLM_MODEL`) | LiveKit Inference (`LLM_MODEL`) |
@@ -31,7 +34,8 @@ starts, never the keys):
 With no own keys, LiveKit Cloud credentials are the only keys needed, but everything then
 draws on the LiveKit Inference quota. When that quota is spent the agent publishes a
 `session_error` event (`quota_exceeded`) and leaves the room instead of sitting on
-"listening"; add `DEEPGRAM_API_KEY` and `GOOGLE_API_KEY` to keep going. The turn detector and
+"listening"; add `DEEPGRAM_API_KEY` (https://console.deepgram.com/signup, then Project → API
+Keys) and `GOOGLE_API_KEY` (https://aistudio.google.com/app/apikey) to keep going. The turn detector and
 voice activity detection run locally from weights bundled with `livekit-local-inference`, so
 there is nothing to download and they never use the quota. Adaptive interruption (telling a
 real barge-in from a backchannel like "mm-hm") does use LiveKit Inference; when that fails

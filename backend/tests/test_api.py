@@ -5,7 +5,9 @@ import pytest
 from fastapi.testclient import TestClient
 from livekit.api import TokenVerifier
 
+from synthio_backend.api.main import create_app
 from synthio_backend.core.config import Settings
+from tests.conftest import make_settings
 
 
 def test_health(client: TestClient) -> None:
@@ -131,3 +133,29 @@ def test_cors_allows_frontend_origin(client: TestClient) -> None:
         headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"},
     )
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def _preflight(client: TestClient, origin: str) -> str | None:
+    response = client.options(
+        "/api/decks", headers={"Origin": origin, "Access-Control-Request-Method": "GET"}
+    )
+    return response.headers.get("access-control-allow-origin")
+
+
+def test_cors_allows_listed_production_origin() -> None:
+    settings = make_settings(frontend_origins="http://localhost:3000, https://synthio.vercel.app/")
+    with TestClient(create_app(settings)) as client:
+        assert _preflight(client, "https://synthio.vercel.app") == "https://synthio.vercel.app"
+        assert _preflight(client, "https://other.vercel.app") is None
+
+
+def test_cors_origin_regex_allows_preview_deploys() -> None:
+    settings = make_settings(
+        frontend_origins="https://synthio.vercel.app",
+        frontend_origin_regex=r"https://synthio-[a-z0-9-]+\.vercel\.app",
+    )
+    with TestClient(create_app(settings)) as client:
+        preview = "https://synthio-git-feature-team.vercel.app"
+        assert _preflight(client, preview) == preview
+        assert _preflight(client, "https://synthio.vercel.app") == "https://synthio.vercel.app"
+        assert _preflight(client, "https://evil.example.com") is None

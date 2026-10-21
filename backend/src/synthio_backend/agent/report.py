@@ -12,7 +12,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Literal
 
 from livekit import rtc
-from livekit.agents import APIError, llm
+from livekit.agents import APIConnectOptions, APIError, llm
 from pydantic import BaseModel, Field, ValidationError
 
 from synthio_backend.agent.events import ComplianceFlagEvent
@@ -31,6 +31,9 @@ _MAX_LIST_ITEMS = 20
 _MAX_TRANSCRIPT_CHARS = 30_000
 
 LLM_TIMEOUT_S = 20.0
+# Each LLM but the last in the chain gets one try of at most this long, so a failing or hung
+# primary still leaves the fallback time to answer within LLM_TIMEOUT_S.
+_ATTEMPT = APIConnectOptions(max_retry=0, timeout=8.0)
 # Time kept in hand to assemble and send the response before the caller gives up.
 _RESPONSE_MARGIN_S = 3.0
 
@@ -121,9 +124,24 @@ follow-ups. Every reported adverse event needs its own adverse_event follow-up t
 the user's report; mark each criterion true only if it was actually stated."""
 
 
-def llm_completer(model: ChatLLM) -> Completer:
+def llm_completer(chain: Sequence[ChatLLM]) -> Completer:
+    """Tries each LLM in failover order. ``llm.FallbackAdapter.chat`` does not forward
+    ``response_format``, so the chain is walked here instead of through the adapter."""
+    if not chain:
+        raise ValueError("at least one LLM is required")
+
     async def complete(chat_ctx: llm.ChatContext) -> str:
-        response = await model.chat(chat_ctx=chat_ctx, response_format=ReportInsights).collect()
+        *fallible, last = chain
+        for model in fallible:
+            try:
+                response = await model.chat(
+                    chat_ctx=chat_ctx, response_format=ReportInsights, conn_options=_ATTEMPT
+                ).collect()
+            except APIError as exc:
+                logger.warning("report LLM %s failed, trying the next one: %r", model.label, exc)
+                continue
+            return response.text
+        response = await last.chat(chat_ctx=chat_ctx, response_format=ReportInsights).collect()
         return response.text
 
     return complete
