@@ -12,7 +12,7 @@ Both sides MUST conform to this document. Any change here is made on `main` firs
 | Next.js | `npm run dev` | 3000 |
 
 Frontend reads the API base URL from `NEXT_PUBLIC_API_URL` (default `http://localhost:8500`). Port 8000 is avoided because Windows/Hyper-V commonly reserves it.
-Backend allows CORS from `FRONTEND_ORIGINS` (comma-separated, default `http://localhost:3000`).
+Backend allows CORS from `FRONTEND_ORIGINS` (comma-separated, default `http://localhost:3000`) and, optionally, any origin fully matching `FRONTEND_ORIGIN_REGEX` (e.g. Vercel preview deploys). Hosted, the API is started with `uvicorn synthio_backend.api.main:create_app --factory --host 0.0.0.0 --port $PORT` (see `render.yaml`).
 
 ## 2. Environment variables
 
@@ -25,16 +25,17 @@ Backend allows CORS from `FRONTEND_ORIGINS` (comma-separated, default `http://lo
 | `LIVEKIT_API_SECRET` | yes | — | LiveKit Cloud secret |
 | `API_HOST` | no | `127.0.0.1` | API bind host |
 | `API_PORT` | no | `8500` | API bind port |
-| `FRONTEND_ORIGINS` | no | `http://localhost:3000` | CORS allow-list |
+| `FRONTEND_ORIGINS` | no | `http://localhost:3000` | CORS allow-list (exact origins; a trailing `/` is ignored) |
+| `FRONTEND_ORIGIN_REGEX` | no | — | Extra CORS origins as a regex, e.g. `https://.*\.vercel\.app` for preview deploys |
 | `AGENT_NAME` | no | `synthio-presenter` | Explicit agent dispatch name |
 | `STT_MODEL` | no | `deepgram/nova-3` | LiveKit Inference STT model id |
 | `LLM_MODEL` | no | `google/gemini-2.5-flash` | LiveKit Inference LLM model id |
 | `TTS_MODEL` | no | `cartesia/sonic-3` | LiveKit Inference TTS model id |
 | `TTS_VOICE` | no | provider default | TTS voice id |
-| `DEEPGRAM_API_KEY` | no | — | If set: STT (`DEEPGRAM_STT_MODEL`, default `nova-3`) and TTS (`DEEPGRAM_TTS_MODEL`, default `aura-2-thalia-en`) use the Deepgram plugin directly instead of LiveKit Inference |
-| `GOOGLE_API_KEY` | no | — | If set: LLM uses the Google plugin (`GOOGLE_LLM_MODEL`, default `gemini-2.5-flash`) instead of LiveKit Inference |
+| `DEEPGRAM_API_KEY` | no | — | If set: STT (`DEEPGRAM_STT_MODEL`, default `nova-3`) and TTS (`DEEPGRAM_TTS_MODEL`, default `aura-2-thalia-en`) try the Deepgram plugin first, then LiveKit Inference |
+| `GOOGLE_API_KEY` | no | — | If set: the LLM tries the Google plugin (`GOOGLE_LLM_MODEL`, default `gemini-3.5-flash`; thinking level `GOOGLE_THINKING_LEVEL`, default `minimal` for voice latency, blank = model default, Gemini 3+ only) first, then LiveKit Inference |
 
-Provider selection is per component: own provider key present → direct plugin, otherwise **LiveKit Inference** (`livekit.agents.inference`). The turn detector must not depend on an exhaustible cloud quota (use the local model if `inference.TurnDetector` is cloud-metered). The resolved providers are logged at worker start (never the keys).
+Each component has an ordered **failover chain**: its own-key provider first (when the key is set and non-blank), **LiveKit Inference** (`livekit.agents.inference`) last — STT `[Deepgram, Inference]`, LLM `[Google Gemini, Inference]`, TTS `[Deepgram, Inference]`. A chain of two is wrapped in LiveKit's `FallbackAdapter` (`stt`/`llm`/`tts`): a failing provider (e.g. 429 or spent quota) is skipped at once with no per-provider retries (attempt timeouts: STT 5 s, LLM 10 s), the next one serves, and the failed one is probed in the background until it recovers. Both TTS providers run at 24 kHz, so failover never resamples. A chain of one (no own key) is used unwrapped. The session report's structured-output call walks the LLM chain itself, because `llm.FallbackAdapter` does not forward `response_format`. The turn detector must not depend on an exhaustible cloud quota (use the local model if `inference.TurnDetector` is cloud-metered). The chains are logged at worker start in failover order, e.g. `"llm": "google:gemini-3.5-flash -> inference:google/gemini-2.5-flash"` (never the keys).
 
 `frontend/.env.local` (template in `frontend/.env.example`): `NEXT_PUBLIC_API_URL`.
 

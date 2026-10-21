@@ -1,0 +1,59 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec): New -> Blueprint -> pick this repo.
+# Both services redeploy on every push to main. Secrets use `sync: false`, so Render prompts
+# for them when the Blueprint is first created; they are never stored in this file.
+services:
+  # REST API (FastAPI): token minting, decks, health check.
+  - type: web
+    name: synthio-api
+    runtime: python
+    plan: free # sleeps after ~15 min idle; the first request then takes a while to wake it
+    rootDir: backend
+    branch: main
+    autoDeployTrigger: commit # replaces the deprecated `autoDeploy: true`
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run --no-sync uvicorn synthio_backend.api.main:create_app --factory --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      # The Vercel production URL, e.g. https://synthio.vercel.app (comma-separate several).
+      - key: FRONTEND_ORIGINS
+        sync: false
+      # Optional: allow Vercel preview deploys too, e.g. https://synthio-.*\.vercel\.app
+      - key: FRONTEND_ORIGIN_REGEX
+        sync: false
+
+  # LiveKit agent worker: connects out to LiveKit Cloud, no inbound port.
+  # Background workers have no free instance type on Render.
+  - type: worker
+    name: synthio-agent
+    runtime: python
+    plan: 0.5c-512mb
+    rootDir: backend
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: pip install uv && uv sync --frozen --no-dev && uv run --no-sync synthio-agent download-files
+    startCommand: uv run --no-sync synthio-agent start
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false

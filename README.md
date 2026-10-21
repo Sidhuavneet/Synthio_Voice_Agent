@@ -13,7 +13,7 @@ The primary deck is **ACL Injuries in Football: Prevention to Return-to-Play**, 
 Next.js (3000) ──REST──▶ FastAPI (8500) ── mints LiveKit token + dispatches agent
      │                                              
      └──── WebRTC (LiveKit Cloud) ◀──▶ Presenter agent (LiveKit Agents, Python)
-                                         STT → LLM → TTS via LiveKit Inference
+                                         STT → LLM → TTS (own keys first, LiveKit Inference fallback)
 ```
 
 1. You pick a deck. The backend returns a LiveKit token that also tells LiveKit to send the presenter agent into the room.
@@ -46,6 +46,20 @@ npm run dev                       # http://localhost:3000
 ```
 
 Open http://localhost:3000, pick a deck, allow the microphone, and start talking whenever you like.
+
+## Deploy
+
+Backend on [Render](https://render.com), frontend on [Vercel](https://vercel.com). **Auto-deploy: every push to `main` redeploys both.**
+
+1. **Render** (backend): New → Blueprint → pick this repo. [`render.yaml`](render.yaml) creates two services from `backend/`:
+   - `synthio-api` (web service, free plan): the REST API, health check `/api/health`. A free web service sleeps after inactivity, so the first request after a pause is slow.
+   - `synthio-agent` (background worker): the LiveKit presenter agent. Background workers need a paid instance type on Render.
+
+   Fill the secret env vars when prompted: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, and optionally `DEEPGRAM_API_KEY` / `GOOGLE_API_KEY` (own keys are tried first, LiveKit Inference is the runtime fallback).
+2. **Vercel** (frontend): import the repo, set **Root Directory** to `frontend`, and add `NEXT_PUBLIC_API_URL=https://<synthio-api>.onrender.com`. Next.js is detected automatically.
+3. Back on Render, set `FRONTEND_ORIGINS` on `synthio-api` to the Vercel URL (e.g. `https://synthio.vercel.app`). To allow preview deploys too, set `FRONTEND_ORIGIN_REGEX` (e.g. `https://synthio-.*\.vercel\.app`).
+
+Alternative host for the worker: [LiveKit Cloud Agents](https://docs.livekit.io/agents/ops/deployment/) (`lk agent create` from `backend/`).
 
 ## 60-second demo
 
