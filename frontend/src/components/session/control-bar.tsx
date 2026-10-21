@@ -2,7 +2,7 @@
 
 import { Track } from "livekit-client";
 import { useTrackToggle } from "@livekit/components-react";
-import { FileText, LogOut, Mic, MicOff } from "lucide-react";
+import { FileText, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { describeMicrophoneError } from "@/lib/media-errors";
@@ -10,12 +10,10 @@ import { describeMicrophoneError } from "@/lib/media-errors";
 export interface ControlBarProps {
   /** Ends the session and shows the report. */
   onEndWithReport: () => void;
-  /** Leaves without a report. */
-  onLeave: () => void;
   onMicrophoneError: (message: string | null) => void;
 }
 
-export function ControlBar({ onEndWithReport, onLeave, onMicrophoneError }: ControlBarProps) {
+export function ControlBar({ onEndWithReport, onMicrophoneError }: ControlBarProps) {
   const { enabled, pending, toggle } = useTrackToggle({
     source: Track.Source.Microphone,
     onDeviceError: (error) =>
@@ -45,10 +43,6 @@ export function ControlBar({ onEndWithReport, onLeave, onMicrophoneError }: Cont
         >
           {enabled ? <Mic aria-hidden /> : <MicOff aria-hidden />}
           {enabled ? "Mute" : "Unmute"}
-        </Button>
-        <Button variant="ghost" onClick={onLeave}>
-          <LogOut aria-hidden />
-          Leave
         </Button>
         <Button variant="danger" onClick={onEndWithReport}>
           <FileText aria-hidden />

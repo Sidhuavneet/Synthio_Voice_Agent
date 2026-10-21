@@ -1,9 +1,8 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
-import type { HighlightTarget } from "@/lib/bullet-match";
 import { cn } from "@/lib/cn";
 import type { Citation } from "@/lib/deck";
-import type { Slide } from "@/lib/types";
+import type { Slide, SlidePoint } from "@/lib/types";
 
 export type PresenterStatus = "connecting" | "live" | "unavailable";
 
@@ -12,8 +11,8 @@ export interface SlideStageProps {
   slide: Slide;
   total: number;
   presenterStatus: PresenterStatus;
-  /** The bullet or stat being spoken right now, if known. */
-  highlight: HighlightTarget | null;
+  /** Index of the point being narrated (`slide.point`), or null. */
+  activePoint: number | null;
   citations: Citation[];
 }
 
@@ -22,14 +21,14 @@ export function SlideStage({
   slide,
   total,
   presenterStatus,
-  highlight,
+  activePoint,
   citations,
 }: SlideStageProps) {
   const position = `Slide ${slide.index + 1} of ${total}`;
   return (
     <section
       aria-label={position}
-      className="relative isolate rounded-3xl border border-line bg-surface shadow-stage md:min-h-[22rem] xl:aspect-video"
+      className="relative isolate shrink-0 rounded-3xl border border-line bg-surface shadow-stage md:min-h-[22rem]"
     >
       <p aria-live="polite" className="sr-only">
         {presenterStatus === "live" ? `${position}: ${slide.title}` : ""}
@@ -46,7 +45,7 @@ export function SlideStage({
         />
       </div>
 
-      <div className="flex h-full flex-col p-6 sm:p-8 xl:p-12">
+      <div className="flex h-full flex-col p-6 sm:p-8 xl:px-10 xl:py-8">
         <header className="flex items-center justify-between gap-4 text-xs font-medium text-ink-muted">
           <span className="truncate">{deckTitle}</span>
           <PresenterBadge status={presenterStatus} current={slide.index + 1} total={total} />
@@ -54,49 +53,26 @@ export function SlideStage({
 
         <div
           key={slide.index}
-          className="flex flex-1 animate-slide-in flex-col gap-6 pt-6 xl:flex-row xl:items-center xl:gap-12 xl:pt-8"
+          className="flex flex-1 animate-slide-in flex-col gap-5 pt-5 xl:flex-row xl:items-center xl:gap-10"
         >
-          <div className="min-w-0 flex-1 space-y-4 xl:space-y-5">
-            <p className="text-sm font-semibold tracking-[0.14em] text-accent uppercase">
-              {slide.kicker}
-            </p>
-            <h2 className="text-2xl font-semibold tracking-tight text-balance text-ink sm:text-3xl xl:text-4xl">
-              {slide.title}
-            </h2>
-            <ul className="-mx-3 space-y-1">
-              {slide.bullets.map((bullet, i) => {
-                const active = highlight?.kind === "bullet" && highlight.index === i;
-                return (
-                  <li
-                    key={bullet}
-                    data-highlighted={active || undefined}
-                    className={cn(
-                      "flex gap-3 rounded-xl px-3 py-1.5 text-base transition-colors duration-500 ease-out xl:text-lg",
-                      active ? "bg-accent-soft text-ink" : "text-ink-soft",
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "mt-2.5 size-1.5 shrink-0 rounded-full bg-accent transition-transform duration-500 xl:mt-3",
-                        active && "scale-150",
-                      )}
-                    />
-                    <span className="text-pretty">{bullet}</span>
-                  </li>
-                );
-              })}
-            </ul>
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold tracking-[0.14em] text-accent uppercase">
+                {slide.kicker}
+              </p>
+              <h2 className="text-2xl font-semibold tracking-tight text-balance text-ink sm:text-3xl">
+                {slide.title}
+              </h2>
+            </div>
+            <ol className="-mx-3 space-y-1">
+              {slide.points.map((point, i) => (
+                <PointItem key={point.text} point={point} active={i === activePoint} />
+              ))}
+            </ol>
           </div>
 
           {slide.stat && (
-            <aside
-              data-highlighted={highlight?.kind === "stat" || undefined}
-              className={cn(
-                "rounded-2xl bg-[linear-gradient(135deg,var(--color-navy),var(--color-accent)_60%,var(--color-violet))] p-6 text-white ring-accent-light/70 ring-offset-2 ring-offset-surface transition-[box-shadow,transform] duration-500 ease-out xl:w-64 xl:shrink-0",
-                highlight?.kind === "stat" && "scale-[1.02] ring-4",
-              )}
-            >
+            <aside className="rounded-2xl bg-[linear-gradient(135deg,var(--color-navy),var(--color-accent)_60%,var(--color-violet))] p-6 text-white xl:w-56 xl:shrink-0">
               <p className="text-4xl font-semibold tracking-tight xl:text-5xl">
                 {slide.stat.value}
               </p>
@@ -106,7 +82,7 @@ export function SlideStage({
         </div>
 
         {citations.length > 0 && (
-          <footer className="mt-6 border-t border-line pt-3 text-xs text-ink-muted">
+          <footer className="mt-5 border-t border-line pt-3 text-xs text-ink-muted">
             <h3 className="sr-only">Sources</h3>
             <ol className="space-y-0.5">
               {citations.map((citation) => (
@@ -120,6 +96,37 @@ export function SlideStage({
         )}
       </div>
     </section>
+  );
+}
+
+function PointItem({ point, active }: { point: SlidePoint; active: boolean }) {
+  return (
+    <li
+      aria-current={active || undefined}
+      className={cn(
+        "flex gap-3 rounded-xl px-3 py-1.5 transition-colors duration-500 ease-out",
+        active && "bg-accent-soft",
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "mt-2.5 size-1.5 shrink-0 rounded-full bg-accent transition-transform duration-500",
+          active && "scale-150",
+        )}
+      />
+      <div className="min-w-0 space-y-0.5">
+        <p
+          className={cn(
+            "text-base font-medium text-pretty transition-colors duration-500 xl:text-lg",
+            active ? "text-ink" : "text-ink-soft",
+          )}
+        >
+          {point.text}
+        </p>
+        <p className="text-sm leading-snug text-pretty text-ink-muted">{point.detail}</p>
+      </div>
+    </li>
   );
 }
 

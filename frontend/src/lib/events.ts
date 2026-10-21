@@ -5,7 +5,14 @@ import {
   isRecord,
   parseJson,
 } from "@/lib/guards";
-import type { AgentEvent, ComplianceCategory, ComplianceFlag, TurnMetrics } from "@/lib/types";
+import type {
+  AgentEvent,
+  ComplianceCategory,
+  ComplianceFlag,
+  SessionErrorCode,
+  SessionErrorEvent,
+  TurnMetrics,
+} from "@/lib/types";
 
 const COMPLIANCE_CATEGORIES: ReadonlySet<string> = new Set<ComplianceCategory>([
   "off_label",
@@ -34,6 +41,25 @@ export function parseComplianceFlag(value: unknown): ComplianceFlag | null {
   return { id, category, question, slideIndex, timestamp };
 }
 
+const SESSION_ERROR_CODES: ReadonlySet<string> = new Set<SessionErrorCode>([
+  "quota_exceeded",
+  "provider_error",
+  "internal",
+]);
+
+const FALLBACK_SESSION_ERROR = "The presenter ran into a problem and had to stop.";
+
+function parseSessionError(value: unknown): SessionErrorEvent | null {
+  if (!isRecord(value)) return null;
+  const { code, message } = value;
+  if (typeof code !== "string") return null;
+  return {
+    // An unknown code from a newer agent is still an error worth showing.
+    code: SESSION_ERROR_CODES.has(code) ? (code as SessionErrorCode) : "internal",
+    message: typeof message === "string" && message.trim() ? message : FALLBACK_SESSION_ERROR,
+  };
+}
+
 function parseTurnMetrics(value: unknown): TurnMetrics | null {
   if (!isRecord(value)) return null;
   const { turnId, sttMs, eouMs, llmTtftMs, ttsTtfbMs, totalMs } = value;
@@ -60,6 +86,10 @@ export function parseAgentEvent(payload: Uint8Array): AgentEvent | null {
     case "compliance_flag": {
       const flag = parseComplianceFlag(value);
       return flag && { type: "compliance_flag", ...flag };
+    }
+    case "session_error": {
+      const error = parseSessionError(value);
+      return error && { type: "session_error", ...error };
     }
     case "turn_metrics": {
       const metrics = parseTurnMetrics(value);

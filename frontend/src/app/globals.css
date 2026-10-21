@@ -45,6 +45,23 @@ body {
   color: var(--color-ink);
 }
 
+/* Tailwind v4's preflight leaves buttons with the default arrow cursor. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label[for],
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"],
+  select:disabled {
+    cursor: not-allowed;
+  }
+}
+
 /* Bars rendered by @livekit/components-react <BarVisualizer>. */
 .lk-audio-bar-visualizer {
   display: flex;

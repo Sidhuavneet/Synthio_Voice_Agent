@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { ApiError, createSession, getDeck } from "@/lib/api";
 import { toErrorMessage } from "@/lib/errors";
-import type { ConnectionDetails, Deck } from "@/lib/types";
+import type { ConnectionDetails, Deck, ResumeRequest } from "@/lib/types";
 
 export interface Presentation {
   deck: Deck;
@@ -32,24 +32,30 @@ function describeStartError(error: unknown): Omit<StartError, "deckId"> {
   };
 }
 
-/** Loads the full deck and requests LiveKit connection details for it. */
+/** Loads the full deck and requests LiveKit connection details for it, optionally resuming. */
 export function useStartPresentation() {
   const [pendingDeckId, setPendingDeckId] = useState<string | null>(null);
   const [error, setError] = useState<StartError | null>(null);
 
-  const start = useCallback(async (deckId: string): Promise<Presentation | null> => {
-    setPendingDeckId(deckId);
-    setError(null);
-    try {
-      const [deck, connection] = await Promise.all([getDeck(deckId), createSession(deckId)]);
-      return { deck, connection };
-    } catch (err) {
-      setError({ deckId, ...describeStartError(err) });
-      return null;
-    } finally {
-      setPendingDeckId(null);
-    }
-  }, []);
+  const start = useCallback(
+    async (deckId: string, resume?: ResumeRequest): Promise<Presentation | null> => {
+      setPendingDeckId(deckId);
+      setError(null);
+      try {
+        const [deck, connection] = await Promise.all([
+          getDeck(deckId),
+          createSession(deckId, resume),
+        ]);
+        return { deck, connection };
+      } catch (err) {
+        setError({ deckId, ...describeStartError(err) });
+        return null;
+      } finally {
+        setPendingDeckId(null);
+      }
+    },
+    [],
+  );
 
   const dismissError = useCallback(() => setError(null), []);
 

@@ -1,8 +1,12 @@
-import { ArrowRight, Layers, Loader2 } from "lucide-react";
+"use client";
+
+import { ArrowRight, History, Layers, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
+import { useSavedProgress } from "@/hooks/use-deck-progress";
 import { cn } from "@/lib/cn";
 import { formatCategory } from "@/lib/format";
+import { resumeSlideIndex, type DeckProgress } from "@/lib/progress";
 import type { DeckSummary } from "@/lib/types";
 
 export interface DeckCardProps {
@@ -10,10 +14,13 @@ export interface DeckCardProps {
   featured?: boolean;
   pending: boolean;
   disabled: boolean;
-  onStart: (deckId: string) => void;
+  /** `progress` is the deck's saved progress, if any. */
+  onStart: (deck: DeckSummary, progress: DeckProgress | null) => void;
 }
 
 export function DeckCard({ deck, featured = false, pending, disabled, onStart }: DeckCardProps) {
+  const progress = useSavedProgress(deck.id, deck.slideCount);
+
   return (
     <article
       className={cn(
@@ -34,6 +41,13 @@ export function DeckCard({ deck, featured = false, pending, disabled, onStart }:
         <div className="flex flex-wrap items-center gap-2">
           <Chip tone={featured ? "inverse" : "accent"}>{formatCategory(deck.category)}</Chip>
           {featured && <Chip tone="inverse">Featured</Chip>}
+          {progress && (
+            <Chip tone={featured ? "inverse" : "neutral"}>
+              <History aria-hidden className="size-3" />
+              In progress · slide {resumeSlideIndex(progress, deck.slideCount) + 1}/
+              {deck.slideCount}
+            </Chip>
+          )}
         </div>
         <div className="space-y-2">
           <h2
@@ -67,7 +81,7 @@ export function DeckCard({ deck, featured = false, pending, disabled, onStart }:
           className={cn(featured && "border-transparent")}
           disabled={disabled}
           aria-busy={pending}
-          onClick={() => onStart(deck.id)}
+          onClick={() => onStart(deck, progress)}
         >
           {pending ? (
             <>
@@ -76,7 +90,7 @@ export function DeckCard({ deck, featured = false, pending, disabled, onStart }:
             </>
           ) : (
             <>
-              Start presentation
+              {progress ? "Continue" : "Start presentation"}
               <ArrowRight
                 aria-hidden
                 className="transition-transform group-hover:translate-x-0.5"
