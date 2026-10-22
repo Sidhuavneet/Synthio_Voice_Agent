@@ -65,13 +65,15 @@ def test_user_turn_emits_once_with_total() -> None:
     assert aggregator.add(_tts("s1")) is None  # second segment of the same reply
 
 
-def test_agent_initiated_turn_has_no_total() -> None:
+def test_agent_initiated_turn_is_not_emitted() -> None:
     aggregator = TurnMetricsAggregator()
     aggregator.add(_llm("s2"))
-    event = aggregator.add(_tts("s2"))
-    assert event is not None
-    assert (event.eou_ms, event.stt_ms, event.total_ms) == (None, None, None)
-    assert event.llm_ttft_ms == 300
+    assert aggregator.add(_tts("s2")) is None
+
+
+def test_scripted_narration_is_not_emitted() -> None:
+    aggregator = TurnMetricsAggregator()
+    assert aggregator.add(_tts("narration")) is None
 
 
 def test_ignores_unrelated_and_unattributed_metrics() -> None:

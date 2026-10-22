@@ -53,6 +53,11 @@ class TurnMetricsAggregator:
         elif not turn.emitted and metrics.ttfb >= 0:
             turn.tts_ttfb_s = metrics.ttfb
             turn.emitted = True
+            # Scripted narration and agent-initiated replies have no end of utterance: they
+            # are not replies the user waited for, and emitting them would replace the last
+            # answer's latency with an empty row.
+            if turn.eou_s is None:
+                return None
             return self._event(metrics.speech_id, turn)
         return None
 
