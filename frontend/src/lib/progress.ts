@@ -9,6 +9,27 @@ export interface DeckProgress {
   presented: number[];
   /** Epoch milliseconds. */
   updatedAt: number;
+  /**
+   * Epoch milliseconds when every slide had been presented. Absent on in-progress records and
+   * on records saved before completion tracking existed.
+   */
+  completedAt?: number;
+}
+
+export type DeckStatus = "not_started" | "in_progress" | "completed";
+
+/** What the progress panel shows for one deck. */
+export interface DeckProgressSummary {
+  status: DeckStatus;
+  presentedCount: number;
+  slideCount: number;
+  /** Slide a resume would continue from; null unless in progress. */
+  resumeIndex: number | null;
+  /** Last saved activity (epoch ms); null when not started. */
+  updatedAt: number | null;
+  completedAt: number | null;
+  /** The resumable record, only while in progress. */
+  progress: DeckProgress | null;
 }
 
 const KEY_PREFIX = "synthio.progress.";
@@ -30,10 +51,10 @@ export function hasProgress(slideIndex: number, presented: readonly number[]): b
 }
 
 /**
- * Validates a stored value against the deck it should belong to. Returns null for malformed,
- * foreign, out-of-range, empty or already-complete progress.
+ * Validates a stored value against the deck it should belong to, keeping completed records.
+ * Returns null for malformed, foreign, out-of-range or empty progress.
  */
-export function parseProgress(
+export function parseStoredProgress(
   raw: string | null,
   deckId: string,
   slideCount: number,
@@ -41,7 +62,7 @@ export function parseProgress(
   if (raw === null) return null;
   const value = parseJson(raw);
   if (!isRecord(value)) return null;
-  const { deckId: storedId, slideIndex, presented, updatedAt } = value;
+  const { deckId: storedId, slideIndex, presented, updatedAt, completedAt } = value;
   if (
     storedId !== deckId ||
     !isNonNegativeInteger(slideIndex) ||
@@ -54,8 +75,108 @@ export function parseProgress(
   const indices = [
     ...new Set(presented.filter((i): i is number => isNonNegativeInteger(i) && i < slideCount)),
   ].sort((a, b) => a - b);
-  if (!hasProgress(slideIndex, indices) || isDeckComplete(indices, slideCount)) return null;
+  if (!hasProgress(slideIndex, indices)) return null;
+  const complete = isDeckComplete(indices, slideCount);
+  // A record is only "completed" once every slide is presented; older data has no completedAt.
+  if (complete) {
+    return {
+      deckId,
+      slideIndex,
+      presented: indices,
+      updatedAt,
+      completedAt: isFiniteNumber(completedAt) ? completedAt : updatedAt,
+    };
+  }
   return { deckId, slideIndex, presented: indices, updatedAt };
+}
+
+export function isProgressComplete(progress: DeckProgress): boolean {
+  return progress.completedAt !== undefined;
+}
+
+/**
+ * Resumable progress only: like `parseStoredProgress`, but a completed deck has nothing to
+ * resume (the user starts over), so it returns null.
+ */
+export function parseProgress(
+  raw: string | null,
+  deckId: string,
+  slideCount: number,
+): DeckProgress | null {
+  const progress = parseStoredProgress(raw, deckId, slideCount);
+  return progress && !isProgressComplete(progress) ? progress : null;
+}
+
+/** Panel view of a deck's stored progress. */
+export function summarizeProgress(
+  raw: string | null,
+  deckId: string,
+  slideCount: number,
+): DeckProgressSummary {
+  const progress = parseStoredProgress(raw, deckId, slideCount);
+  if (!progress) {
+    return {
+      status: "not_started",
+      presentedCount: 0,
+      slideCount,
+      resumeIndex: null,
+      updatedAt: null,
+      completedAt: null,
+      progress: null,
+    };
+  }
+  const completed = isProgressComplete(progress);
+  return {
+    status: completed ? "completed" : "in_progress",
+    presentedCount: progress.presented.length,
+    slideCount,
+    resumeIndex: completed ? null : resumeSlideIndex(progress, slideCount),
+    updatedAt: progress.updatedAt,
+    completedAt: progress.completedAt ?? null,
+    progress: completed ? null : progress,
+  };
+}
+
+/**
+ * The record to store for a live position: marks it completed once every slide is presented,
+ * keeping an earlier `completedAt` so repeated saves don't move the completion time.
+ * Returns null when there is nothing worth saving.
+ */
+export function nextProgressRecord(
+  previous: DeckProgress | null,
+  deckId: string,
+  slideCount: number,
+  slideIndex: number,
+  presented: number[],
+  now: number,
+): DeckProgress | null {
+  if (isDeckComplete(presented, slideCount)) {
+    const completedAt =
+      previous && previous.completedAt !== undefined ? previous.completedAt : now;
+    return { deckId, slideIndex, presented, updatedAt: now, completedAt };
+  }
+  if (!hasProgress(slideIndex, presented)) return null;
+  return { deckId, slideIndex, presented, updatedAt: now };
+}
+
+const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * 24 * 3600],
+  ["month", 30 * 24 * 3600],
+  ["week", 7 * 24 * 3600],
+  ["day", 24 * 3600],
+  ["hour", 3600],
+  ["minute", 60],
+];
+
+/** Epoch ms -> "just now", "5 minutes ago", "yesterday", "3 weeks ago". */
+export function formatRelativeTime(epochMs: number, now: number, locale?: string): string {
+  const diffSec = Math.round((epochMs - now) / 1000);
+  if (Math.abs(diffSec) < 45) return "just now";
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  for (const [unit, seconds] of UNITS) {
+    if (Math.abs(diffSec) >= seconds) return formatter.format(Math.round(diffSec / seconds), unit);
+  }
+  return formatter.format(Math.round(diffSec / 60) || -1, "minute");
 }
 
 /**
