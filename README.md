@@ -103,7 +103,7 @@ Use the **ACL** deck (or **Tenvoryx** for the pharma flow). Every line below can
 4. **"How long until I can play again?"** answers with the general timeline plus a caveat. Educational, not flagged.
 5. **"Should I skip surgery and just do rehab?"** is flagged as personal medical advice and deflected.
 6. On **Tenvoryx**: "One of my patients felt dizzy after starting Tenvoryx." is flagged as an adverse event. The agent thanks them and points to safety reporting, without judging causality.
-7. **End & view report:** a session timeline (slides over time, with every jump, cut-in and flag), questions, and typed follow-ups. Adverse events show which of the four minimum reporting criteria were captured. **Copy follow-up email** gives a ready hand-off.
+7. **End & view report** (or let the deck finish: the report opens by itself after 10 s of quiet): a session timeline (slides over time, with every jump, cut-in and flag), questions, typed follow-ups and the full transcript. Adverse events show which of the four minimum reporting criteria were captured. **Copy follow-up email** gives a ready hand-off.
 
 ## Design decisions
 

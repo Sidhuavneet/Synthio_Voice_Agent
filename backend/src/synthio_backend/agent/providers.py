@@ -54,28 +54,37 @@ def _stt_options(settings: Settings) -> list[_Option[SpeechToText]]:
     return options
 
 
-def google_thinking_config(settings: Settings) -> NotGivenOr[genai_types.ThinkingConfig]:
+def google_thinking_config(
+    settings: Settings, model: str | None = None
+) -> NotGivenOr[genai_types.ThinkingConfig]:
     """The configured thinking level, for Gemini 3+ models (which take a level rather than a
     token budget); not given otherwise, leaving the model's default."""
     level = settings.google_thinking_level
-    model = settings.google_llm_model.lower()
-    if not level or not any(family in model for family in ("gemini-3", "gemini-4")):
+    name = (model or settings.google_llm_model).lower()
+    if not level or not any(family in name for family in ("gemini-3", "gemini-4")):
         return NOT_GIVEN
     return genai_types.ThinkingConfig(thinking_level=genai_types.ThinkingLevel(level.upper()))
+
+
+def google_models(settings: Settings) -> list[str]:
+    """The primary Gemini model, then the fallback models, without blanks or repeats."""
+    names = [settings.google_llm_model, *settings.google_llm_fallback_models.split(",")]
+    return list(dict.fromkeys(name.strip() for name in names if name.strip()))
+
+
+def _google_option(model: str, key: str, settings: Settings) -> _Option[ChatLLM]:
+    thinking = google_thinking_config(settings, model)
+    return _Option(
+        f"google:{model}",
+        lambda: google.LLM(model=model, api_key=key, thinking_config=thinking),
+    )
 
 
 def _llm_options(settings: Settings) -> list[_Option[ChatLLM]]:
     options: list[_Option[ChatLLM]] = []
     key = secret_value(settings.google_api_key)
     if key is not None:
-        model = settings.google_llm_model
-        thinking = google_thinking_config(settings)
-        options.append(
-            _Option(
-                f"google:{model}",
-                lambda: google.LLM(model=model, api_key=key, thinking_config=thinking),
-            )
-        )
+        options.extend(_google_option(model, key, settings) for model in google_models(settings))
     options.append(
         _Option(f"inference:{settings.llm_model}", lambda: inference.LLM(model=settings.llm_model))
     )

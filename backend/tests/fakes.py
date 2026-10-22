@@ -33,6 +33,9 @@ class FakeSpeech:
     def __init__(self) -> None:
         self.handles: list[FakeHandle] = []
         self.replies: list[str] = []
+        self.reply_handles: list[FakeHandle] = []
+        # When set, replies play until the test finishes them (they end at once otherwise).
+        self.hold_replies = False
         self.fail = False
 
     @property
@@ -53,7 +56,9 @@ class FakeSpeech:
     def generate_reply(self, instructions: str) -> FakeHandle:
         self.replies.append(instructions)
         handle = FakeHandle(instructions)
-        handle.finish()
+        self.reply_handles.append(handle)
+        if not self.hold_replies:
+            handle.finish()
         return handle
 
     async def interrupt(self) -> None:
@@ -65,9 +70,13 @@ class FakeProgress:
     def __init__(self) -> None:
         self.points: list[int] = []
         self.presented: list[list[int]] = []
+        self.modes: list[str] = []
 
     def show_point(self, point: int) -> None:
         self.points.append(point)
 
     def show_presented(self, presented: Sequence[int]) -> None:
         self.presented.append(list(presented))
+
+    def show_mode(self, mode: str) -> None:
+        self.modes.append(mode)

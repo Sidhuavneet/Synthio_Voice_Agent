@@ -11,6 +11,7 @@ from synthio_backend.agent.providers import (
     build_tts,
     build_turn_detector,
     describe_providers,
+    google_models,
     google_thinking_config,
     llm_chain,
     stt_chain,
@@ -77,11 +78,12 @@ def test_google_only_chains_llm_before_inference() -> None:
     settings = make_settings(deepgram_api_key=None, google_api_key=_GOOGLE)
     assert describe_providers(settings) == {
         "stt": "inference:deepgram/nova-3",
-        "llm": "google:gemini-3.5-flash -> inference:google/gemini-2.5-flash",
+        "llm": "google:gemini-3.5-flash -> google:gemini-3-flash-preview -> "
+        "google:gemini-3.1-flash-lite-preview -> inference:google/gemini-2.5-flash",
         "tts": "inference:cartesia/sonic-3",
         **_LOCAL,
     }
-    assert [type(m) for m in llm_chain(settings)] == [google.LLM, inference.LLM]
+    assert [type(m) for m in llm_chain(settings)] == [google.LLM] * 3 + [inference.LLM]
     assert isinstance(build_llm(settings), llm.FallbackAdapter)
     assert isinstance(build_stt(settings), inference.STT)
     assert isinstance(build_tts(settings), inference.TTS)
@@ -92,7 +94,8 @@ def test_both_keys_chain_every_component() -> None:
     described = describe_providers(settings)
     assert described == {
         "stt": "deepgram:nova-3 -> inference:deepgram/nova-3",
-        "llm": "google:gemini-3.5-flash -> inference:google/gemini-2.5-flash",
+        "llm": "google:gemini-3.5-flash -> google:gemini-3-flash-preview -> "
+        "google:gemini-3.1-flash-lite-preview -> inference:google/gemini-2.5-flash",
         "tts": "deepgram:aura-2-thalia-en -> inference:cartesia/sonic-3",
         **_LOCAL,
     }
@@ -169,3 +172,11 @@ def test_google_thinking_level_is_configurable_or_off() -> None:
     assert google_thinking_config(make_settings(google_thinking_level="")) is NOT_GIVEN
     budget_model = make_settings(google_llm_model="gemini-2.5-flash")
     assert google_thinking_config(budget_model) is NOT_GIVEN
+
+
+def test_google_models_skip_blanks_and_repeats() -> None:
+    settings = make_settings(
+        google_llm_model="gemini-3.5-flash",
+        google_llm_fallback_models=" gemini-3.5-flash, ,gemini-3-flash-preview ",
+    )
+    assert google_models(settings) == ["gemini-3.5-flash", "gemini-3-flash-preview"]

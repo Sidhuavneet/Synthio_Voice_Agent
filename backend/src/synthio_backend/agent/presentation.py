@@ -74,6 +74,8 @@ class ProgressSink(Protocol):
 
     def show_presented(self, presented: Sequence[int]) -> None: ...
 
+    def show_mode(self, mode: Mode) -> None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class Timing:
@@ -190,7 +192,7 @@ class PresentationController:
             self._begin(lead=None, trigger="user")
             return
         await self.show(index, trigger="user")
-        self._mode = "idle"
+        self._set_mode("idle")
         self._replay_pending = index
         self._replay_offer = index
         self._spawn(self._ask_replay())
@@ -238,7 +240,7 @@ class PresentationController:
         self._clear_pending()
         self._stop_presenting()
         if self._mode != "finished":
-            self._mode = "answering"
+            self._set_mode("answering")
         # Arms the resume timer in case the reply fails before the agent gets busy (which
         # cancels it); the agent going quiet after the reply re-arms it.
         self._reschedule()
@@ -261,7 +263,7 @@ class PresentationController:
         self._cancel_timer()
         self._stop_presenting()
         self._replay_offer = None
-        self._mode = "presenting"
+        self._set_mode("presenting")
         self._presenting_task = asyncio.create_task(self._present(lead, trigger))
 
     async def _present(self, lead: str | None, trigger: SlideTrigger) -> None:
@@ -290,7 +292,7 @@ class PresentationController:
         self._presented.add(slide.index)
         self._progress.show_presented(self.presented)
         self._cursor = Cursor(self._next_slide_after(slide.index))
-        self._mode = "idle"
+        self._set_mode("idle")
         self._advance_pending = True
         logger.info("presented slide %d", slide.index)
         self._reschedule()
@@ -311,16 +313,21 @@ class PresentationController:
         # Interrupted by the user (an explicit stop cancels this task instead).
         logger.info("presentation interrupted at %s", self._cursor)
         self._progress.show_point(NO_POINT)
-        self._mode = "answering"
+        self._set_mode("answering")
         self._reschedule()
         return False
+
+    def _set_mode(self, mode: Mode) -> None:
+        if mode != self._mode:
+            self._mode = mode
+            self._progress.show_mode(mode)
 
     def _stop_after_failure(self) -> None:
         """Leaves ``presenting`` so a failed segment cannot stall the controller; the next
         user turn answers and resumes from the cursor as usual."""
         self._current = None
         self._progress.show_point(NO_POINT)
-        self._mode = "idle"
+        self._set_mode("idle")
 
     def _stop_presenting(self) -> None:
         task, self._presenting_task = self._presenting_task, None
@@ -340,14 +347,25 @@ class PresentationController:
         return next((i for i in range(index + 1, count) if i not in self._presented), count)
 
     def _finish(self) -> None:
-        self._mode = "finished"
         if self._wrapped_up:
+            self._set_mode("finished")
             return
         self._wrapped_up = True
+        # Published once the wrap-up has played out: to the frontend, "finished" means the
+        # talk is over.
+        self._mode = "finished"
         try:
-            self._speech.generate_reply(wrap_up_instructions(self._deck))
+            handle = self._speech.generate_reply(wrap_up_instructions(self._deck))
         except RuntimeError:
             logger.warning("wrap-up skipped: session is not running", exc_info=True)
+            self._progress.show_mode("finished")
+            return
+        self._spawn(self._announce_finished(handle))
+
+    async def _announce_finished(self, wrap_up: Playback) -> None:
+        await wrap_up.wait_for_playout()
+        if self._mode == "finished":
+            self._progress.show_mode("finished")
 
     async def _ask_replay(self) -> None:
         try:

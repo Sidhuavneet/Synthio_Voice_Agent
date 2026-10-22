@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     deepgram_tts_model: str = "aura-2-thalia-en"
     google_api_key: SecretStr | None = None
     google_llm_model: str = "gemini-3.5-flash"
+    # Tried in order after google_llm_model. Free-tier Gemini quotas are per model, so each
+    # extra model adds its own daily allowance before falling back to LiveKit Inference.
+    google_llm_fallback_models: str = "gemini-3-flash-preview,gemini-3.1-flash-lite-preview"
     # Gemini 3+ thinking level; minimal keeps voice latency low. Blank sends no thinking
     # config. Ignored for models that take a token budget instead.
     google_thinking_level: Literal["", "minimal", "low", "medium", "high"] = "minimal"

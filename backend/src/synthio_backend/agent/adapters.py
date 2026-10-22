@@ -8,7 +8,12 @@ from livekit import rtc
 from livekit.agents import AgentSession
 from livekit.agents.voice import SpeechHandle
 
-from synthio_backend.agent.protocol import SLIDE_POINT_ATTRIBUTE, SLIDE_PRESENTED_ATTRIBUTE
+from synthio_backend.agent.presentation import Mode
+from synthio_backend.agent.protocol import (
+    PRESENTATION_STATE_ATTRIBUTE,
+    SLIDE_POINT_ATTRIBUTE,
+    SLIDE_PRESENTED_ATTRIBUTE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +37,8 @@ class SessionSpeech:
 
 
 class RoomProgress:
-    """Publishes ``slide.point`` / ``slide.presented``; updates are sent in call order."""
+    """Publishes ``slide.point`` / ``slide.presented`` / ``presentation.state``; updates are sent
+    in call order."""
 
     def __init__(self, participant: rtc.LocalParticipant) -> None:
         self._participant = participant
@@ -43,6 +49,9 @@ class RoomProgress:
 
     def show_presented(self, presented: Sequence[int]) -> None:
         self._publish({SLIDE_PRESENTED_ATTRIBUTE: presented_attribute(presented)})
+
+    def show_mode(self, mode: Mode) -> None:
+        self._publish({PRESENTATION_STATE_ATTRIBUTE: mode})
 
     def _publish(self, attributes: dict[str, str]) -> None:
         task = asyncio.create_task(self._send(attributes))

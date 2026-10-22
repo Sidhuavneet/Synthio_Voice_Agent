@@ -16,6 +16,8 @@ from synthio_backend.agent.report import (
     build_insights_input,
     generate_insights,
     handle_report,
+    is_backchannel,
+    parse_insights,
 )
 from synthio_backend.agent.session_log import SessionLog
 from synthio_backend.decks.models import Deck
@@ -29,13 +31,15 @@ class FakeClock:
         return self.now
 
 
-def _log() -> SessionLog:
+def _log(*extra_turns: tuple[str, int]) -> SessionLog:
     clock = FakeClock()
     log = SessionLog(clock=clock)
     clock.now = 30.4
     log.record_slide(3)
     log.record_user_turn("How is it treated?", 3)
     log.add_flag("personal_medical_advice", "Should I skip surgery?", 3)
+    for text, slide_index in extra_turns:
+        log.record_user_turn(text, slide_index)
     clock.now = 42.0
     return log
 
@@ -52,8 +56,8 @@ def _insights(**overrides: object) -> ReportInsights:
     values: dict[str, object] = {
         "summary": "The user asked about treatment.",
         "questions": [
-            InsightQuestion(question="How is it treated?", slide_index=3, answered=True),
-            InsightQuestion(question="Invented slide", slide_index=99, answered=True),
+            InsightQuestion(turn=1, question="How is it treated?", answered=True),
+            InsightQuestion(turn=99, question="Invented question", answered=True),
         ],
         "follow_ups": [_follow_up("Send rehab guide")],
         "interests": ["treatment"],
@@ -78,7 +82,7 @@ def test_assemble_report_combines_facts_and_insights(deck: Deck) -> None:
     assert body["durationSec"] == 42
     assert [s["timeSec"] for s in body["slides"]] == [30, 0, 0, 12, 0]
     assert body["slides"][3]["title"] == deck.slides[3].title
-    # Questions pointing at slides outside the deck are dropped.
+    # Questions come from the logged turns; the LLM cannot invent one.
     assert body["questions"] == [
         {"question": "How is it treated?", "slideIndex": 3, "answered": True}
     ]
@@ -94,9 +98,64 @@ def test_assemble_report_combines_facts_and_insights(deck: Deck) -> None:
 def test_facts_only_report(deck: Deck) -> None:
     report = assemble_report(deck, _log(), EMPTY_INSIGHTS)
     assert report.summary == ""
-    assert report.questions == []
+    assert [(q.question, q.slide_index, q.answered) for q in report.questions] == [
+        ("How is it treated?", 3, True)
+    ]
     assert report.follow_ups == report.interests == []
     assert len(report.compliance_flags) == 1
+
+
+def test_facts_only_report_lists_every_question_but_backchannels(deck: Deck) -> None:
+    log = _log(
+        ("mhm", 3),
+        ("Okay, go on.", 3),
+        ("What about turf?", 4),
+        ("Yes", 4),
+        ("Is surgery always needed?", 2),
+    )
+    log.route_latest_turn(1)
+    report = assemble_report(deck, log, EMPTY_INSIGHTS)
+    assert [(q.question, q.slide_index) for q in report.questions] == [
+        ("How is it treated?", 3),
+        ("What about turf?", 4),
+        ("Is surgery always needed?", 1),
+    ]
+
+
+def test_llm_enriches_but_never_drops_questions(deck: Deck) -> None:
+    log = _log(("uh what about like turf", 4), ("Is surgery always needed?", 2))
+    insights = _insights(
+        questions=[
+            # Turn 3 is missing from the LLM output; turn 1 is listed twice.
+            InsightQuestion(turn=2, question="Can she play on turf?", answered=False),
+            InsightQuestion(turn=1, question="How is it treated?", answered=True),
+            InsightQuestion(turn=1, question="Duplicate", answered=False),
+        ],
+        follow_ups=[_follow_up("Follow up: can she play on turf")],
+    )
+    report = assemble_report(deck, log, insights)
+    assert [(q.question, q.slide_index, q.answered) for q in report.questions] == [
+        ("How is it treated?", 3, True),
+        ("Can she play on turf?", 4, False),
+        ("Is surgery always needed?", 2, True),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("mhm", True),
+        ("Mm-hmm.", True),
+        ("Okay, go on please", True),
+        ("Yes", True),
+        ("", True),
+        ("Is it okay?", False),
+        ("No, what about turf?", False),
+        ("Yes, but how long is rehab?", False),
+    ],
+)
+def test_is_backchannel(text: str, expected: bool) -> None:
+    assert is_backchannel(text) is expected
 
 
 def test_report_is_truncated_to_size_limit(deck: Deck) -> None:
@@ -114,47 +173,48 @@ def test_report_is_truncated_to_size_limit(deck: Deck) -> None:
 def test_open_questions_always_have_a_follow_up(deck: Deck) -> None:
     insights = _insights(
         questions=[
-            InsightQuestion(question="Can I play on turf?", slide_index=4, answered=False),
-            InsightQuestion(question="How is it treated?", slide_index=3, answered=True),
+            InsightQuestion(turn=2, question="Can I play on turf?", answered=False),
+            InsightQuestion(turn=1, question="How is it treated?", answered=True),
         ],
         follow_ups=[],
     )
-    report = assemble_report(deck, _log(), insights)
+    report = assemble_report(deck, _log(("Can I play on turf?", 4)), insights)
     assert report.follow_ups == [
         FollowUp(
             kind="medical_information", text="Follow up on the open question: Can I play on turf?"
         )
     ]
-    assert [q.answered for q in report.questions] == [False, True]
+    assert [q.answered for q in report.questions] == [True, False]
 
 
 def test_open_question_already_followed_up_is_not_repeated(deck: Deck) -> None:
     insights = _insights(
-        questions=[InsightQuestion(question="Can I play on turf?", slide_index=4, answered=False)],
+        questions=[InsightQuestion(turn=2, question="Can I play on turf?", answered=False)],
         follow_ups=[_follow_up("Send guidance on whether she can play on turf")],
     )
-    report = assemble_report(deck, _log(), insights)
+    report = assemble_report(deck, _log(("Can I play on turf?", 4)), insights)
     assert _texts(report.follow_ups) == [
         "Send guidance on whether she can play on turf",
         "Follow up on the open question: Can I play on turf?",
     ]
     insights = _insights(
-        questions=[InsightQuestion(question="Can I play on turf?", slide_index=4, answered=False)],
+        questions=[InsightQuestion(turn=2, question="Can I play on turf?", answered=False)],
         follow_ups=[_follow_up("Answer: can I play on turf")],
     )
-    report = assemble_report(deck, _log(), insights)
+    report = assemble_report(deck, _log(("Can I play on turf?", 4)), insights)
     assert _texts(report.follow_ups) == ["Answer: can I play on turf"]
 
 
 def test_truncation_never_leaves_an_open_question_without_follow_up(deck: Deck) -> None:
+    texts = [f"Open question {i} " + "q" * 200 for i in range(20)]
     questions = [
-        InsightQuestion(question=f"Open question {i} " + "q" * 200, slide_index=0, answered=False)
-        for i in range(20)
+        InsightQuestion(turn=i + 2, question=text, answered=False) for i, text in enumerate(texts)
     ]
     insights = _insights(questions=questions, follow_ups=[], interests=[])
-    report = assemble_report(deck, _log(), insights, max_bytes=4000)
+    log = _log(*((text, 0) for text in texts))
+    report = assemble_report(deck, log, insights, max_bytes=4000)
     assert len(report.model_dump_json(by_alias=True).encode()) <= 4000
-    for question in report.questions:
+    for question in (q for q in report.questions if not q.answered):
         assert any(question.question in item.text for item in report.follow_ups)
 
 
@@ -223,7 +283,7 @@ def test_every_adverse_event_flag_gets_a_follow_up(deck: Deck) -> None:
 
 def test_insights_input_includes_turns_flags_and_transcript(deck: Deck) -> None:
     material = build_insights_input(deck, _log(), _history())
-    assert "[slide 3] How is it treated?" in material
+    assert "1. [slide 3] How is it treated?" in material
     assert "personal_medical_advice: Should I skip surgery?" in material
     assert "Presenter: Welcome to the talk." in material
     assert "User: How is it treated?" in material
@@ -238,16 +298,43 @@ async def test_generate_insights_parses_structured_output() -> None:
     assert await generate_insights(complete, "material", timeout_s=1) == _insights()
 
 
-@pytest.mark.parametrize("failure", ["invalid", "api_error", "timeout"])
-async def test_generate_insights_falls_back_on_failure(failure: str) -> None:
+def test_parse_insights_accepts_a_fenced_json_block() -> None:
+    fenced = "```json\n" + _insights().model_dump_json() + "\n```"
+    assert parse_insights(fenced) == _insights()
+
+
+def test_insights_input_leaves_out_backchannels(deck: Deck) -> None:
+    material = build_insights_input(deck, _log(("mhm", 3), ("And rehab?", 4)), _history())
+    assert "3. [slide 4] And rehab?" in material
+    assert "mhm" not in material
+
+
+@pytest.mark.parametrize("failure", ["invalid", "api_error", "other_error", "timeout"])
+async def test_generate_insights_falls_back_on_failure(
+    failure: str, caplog: pytest.LogCaptureFixture
+) -> None:
     async def complete(ctx: llm.ChatContext) -> str:
         if failure == "api_error":
             raise APIConnectionError()
+        if failure == "other_error":
+            raise ValueError("unexpected response shape")
         if failure == "timeout":
             await asyncio.sleep(1)
         return '{"summary": 1}'
 
     assert await generate_insights(complete, "material", timeout_s=0.05) is None
+    assert "sending facts only" in caplog.text
+
+
+async def test_generate_insights_warns_about_an_empty_summary(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def complete(ctx: llm.ChatContext) -> str:
+        return _insights(summary="").model_dump_json()
+
+    insights = await generate_insights(complete, "material", timeout_s=1)
+    assert insights is not None
+    assert "empty summary" in caplog.text
 
 
 def _invocation() -> rtc.RpcInvocationData:

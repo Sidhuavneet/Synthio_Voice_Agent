@@ -13,7 +13,7 @@ from livekit.agents import AgentSession, FunctionCallEvent, RunEvent, RunResult
 
 from synthio_backend.agent.adapters import SessionSpeech
 from synthio_backend.agent.events import AgentEvent
-from synthio_backend.agent.presentation import PresentationController
+from synthio_backend.agent.presentation import Mode, PresentationController
 from synthio_backend.agent.presenter import PresenterAgent
 from synthio_backend.agent.providers import build_llm
 from synthio_backend.agent.session_log import SessionLog
@@ -39,6 +39,9 @@ class _DiscardProgress:
         """Evals check tool calls, not presentation progress."""
 
     def show_presented(self, presented: Sequence[int]) -> None:
+        """Evals check tool calls, not presentation progress."""
+
+    def show_mode(self, mode: Mode) -> None:
         """Evals check tool calls, not presentation progress."""
 
 

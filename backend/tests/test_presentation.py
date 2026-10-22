@@ -289,6 +289,7 @@ async def test_last_slide_ends_with_one_wrap_up(deck: Deck) -> None:
     await rig.present_slide_fully(last)
     await asyncio.sleep(WAIT_S)
     assert rig.controller.mode == "finished"
+    assert rig.progress.modes[-1] == "finished"
     assert len(rig.speech.replies) == 1
     assert deck.title in rig.speech.replies[0]
     # Questions after the end are answered without auto-resuming.
@@ -401,3 +402,26 @@ async def test_slides_jumped_over_stay_skipped(rig: Rig, deck: Deck) -> None:
     await asyncio.sleep(WAIT_S)
     assert rig.controller.mode == "finished"
     assert rig.controller.presented == [last - 1, last]
+
+
+async def test_mode_changes_are_published_once_each(rig: Rig) -> None:
+    rig.controller.start()
+    await settle()
+    rig.controller.on_user_turn()
+    rig.controller.on_user_turn()
+    assert rig.progress.modes == ["presenting", "answering"]
+
+
+async def test_finished_is_published_after_the_wrap_up_plays_out(deck: Deck) -> None:
+    last = len(deck.slides) - 1
+    rig = Rig(deck, ResumeState(slide_index=last, presented=list(range(last))))
+    rig.speech.hold_replies = True
+    rig.controller.start()
+    await rig.finish(1)
+    await rig.present_slide_fully(last)
+    await asyncio.sleep(WAIT_S)
+    assert rig.controller.mode == "finished"
+    assert "finished" not in rig.progress.modes
+    rig.speech.reply_handles[-1].finish()
+    await settle()
+    assert rig.progress.modes[-1] == "finished"

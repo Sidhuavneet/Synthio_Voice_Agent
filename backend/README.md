@@ -69,9 +69,10 @@ agent directly from your microphone and speakers.
   events and clearly unrelated topics go through the `flag_compliance` tool, which records
   them, publishes a `compliance_flag` event on the `synthio.events` data topic, and the agent
   deflects compliantly.
-- **Session report**: the `session.report` RPC returns slide timings and compliance flags from
-  the session log, plus a summary, questions, follow-ups and interests from one structured LLM
-  call (facts only if that call fails or takes over 20 s). Follow-ups are typed
+- **Session report**: the `session.report` RPC returns slide timings, compliance flags and
+  every user question (backchannels left out) from the session log, plus a summary, follow-ups
+  and interests from one structured LLM call that also rewords the questions and marks which
+  were answered (facts only, with a logged warning, if that call fails or takes over 25 s). Follow-ups are typed
   (`adverse_event`, `medical_information`, `follow_up`); adverse events carry the four minimum
   reporting criteria. Every adverse event flag and every open question is guaranteed a
   follow-up, even without the LLM.

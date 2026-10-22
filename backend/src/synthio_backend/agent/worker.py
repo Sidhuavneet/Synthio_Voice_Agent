@@ -44,6 +44,7 @@ from synthio_backend.agent.presenter import PresenterAgent
 from synthio_backend.agent.protocol import (
     DECK_ID_ATTRIBUTE,
     NAVIGATE_RPC_METHOD,
+    PRESENTATION_STATE_ATTRIBUTE,
     REPORT_RPC_METHOD,
     SLIDE_INDEX_ATTRIBUTE,
     SLIDE_POINT_ATTRIBUTE,
@@ -228,6 +229,7 @@ async def presenter_session(ctx: JobContext) -> None:
             DECK_ID_ATTRIBUTE: deck.id,
             SLIDE_INDEX_ATTRIBUTE: str(start_slide),
             SLIDE_POINT_ATTRIBUTE: str(NO_POINT),
+            PRESENTATION_STATE_ATTRIBUTE: "idle",
             SLIDE_PRESENTED_ATTRIBUTE: presented_attribute(
                 [] if resume is None else sorted(set(resume.presented))
             ),

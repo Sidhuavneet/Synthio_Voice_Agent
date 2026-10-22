@@ -3,6 +3,7 @@
 SLIDE_INDEX_ATTRIBUTE = "slide.index"
 SLIDE_POINT_ATTRIBUTE = "slide.point"
 SLIDE_PRESENTED_ATTRIBUTE = "slide.presented"
+PRESENTATION_STATE_ATTRIBUTE = "presentation.state"
 DECK_ID_ATTRIBUTE = "deck.id"
 NAVIGATE_RPC_METHOD = "slides.navigate"
 REPORT_RPC_METHOD = "session.report"

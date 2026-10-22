@@ -1,13 +1,16 @@
 """End-of-session report for the ``session.report`` RPC (see docs/CONTRACT.md section 5).
 
-Facts come from the session log; the summary, questions, follow-ups and interests come from
-one structured-output LLM call over the chat history. If that call fails or times out the
-report still carries the facts, with the LLM fields left empty.
+Facts come from the session log, including the questions: every user turn but a
+backchannel ("mhm", "okay") is listed, on the slide it was answered on. One structured-output
+LLM call over the chat history writes the summary, follow-ups and interests, and enriches
+the questions (wording, answered); it never adds or drops one. If that call fails or times
+out the report still carries the facts, with the LLM-only fields left empty.
 """
 
 import asyncio
 import json
 import logging
+import re
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Literal
 
@@ -17,7 +20,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from synthio_backend.agent.events import ComplianceFlagEvent
 from synthio_backend.agent.providers import ChatLLM
-from synthio_backend.agent.session_log import SessionLog
+from synthio_backend.agent.session_log import SessionLog, UserTurn
 from synthio_backend.decks.models import CamelModel, Deck
 
 logger = logging.getLogger(__name__)
@@ -30,10 +33,14 @@ _MAX_LIST_ITEMS = 20
 # Keeps the LLM prompt bounded on very long sessions; the most recent part is kept.
 _MAX_TRANSCRIPT_CHARS = 30_000
 
-LLM_TIMEOUT_S = 20.0
+# The frontend waits 30 s for the RPC (REPORT_RPC_TIMEOUT_MS), minus _RESPONSE_MARGIN_S.
+LLM_TIMEOUT_S = 25.0
 # Each LLM but the last in the chain gets one try of at most this long, so a failing or hung
-# primary still leaves the fallback time to answer within LLM_TIMEOUT_S.
-_ATTEMPT = APIConnectOptions(max_retry=0, timeout=8.0)
+# primary still leaves the fallback time to answer within LLM_TIMEOUT_S. The Google plugin
+# sends this as the request deadline, and Gemini rejects any deadline under 10 s with
+# 400 INVALID_ARGUMENT ("Minimum allowed deadline is 10s"), failing every attempt.
+_ATTEMPT_TIMEOUT_S = 12.0
+_ATTEMPT = APIConnectOptions(max_retry=0, timeout=_ATTEMPT_TIMEOUT_S)
 # Time kept in hand to assemble and send the response before the caller gives up.
 _RESPONSE_MARGIN_S = 3.0
 
@@ -89,8 +96,8 @@ class SessionReport(CamelModel):
 
 
 class InsightQuestion(BaseModel):
-    question: str = Field(description="The user's question, briefly paraphrased")
-    slide_index: int = Field(description="Index of the slide shown when it was answered")
+    turn: int = Field(description="Number of the user turn in the numbered list")
+    question: str = Field(description="The user's question or remark, briefly paraphrased")
     answered: bool = Field(description="Whether the presenter actually answered it")
 
 
@@ -99,7 +106,7 @@ class ReportInsights(BaseModel):
 
     summary: str = Field(description="Two to three sentence overview of the conversation")
     questions: list[InsightQuestion] = Field(
-        description="Genuine questions the user asked, in order; not replies like 'yes'"
+        description="One entry per numbered user turn, in order"
     )
     follow_ups: list[FollowUp] = Field(
         description="Actionable follow-up items: reported adverse events, unanswered or open "
@@ -119,7 +126,8 @@ presenting a slide deck) and a user. Use only what is in the material provided; 
 questions or interests. Write in plain English, third person ("The user ..."). Keep each list \
 item under twenty words. Return empty lists when there is nothing to report. The presenter's \
 slide narration is scripted; only the user's questions and the presenter's answers matter for \
-questions and follow-ups. Every question marked as not answered must also appear in \
+questions and follow-ups. List every numbered user turn under questions, with its number \
+as turn; add no others. Every question marked as not answered must also appear in \
 follow-ups. Every reported adverse event needs its own adverse_event follow-up that quotes \
 the user's report; mark each criterion true only if it was actually stated."""
 
@@ -147,9 +155,34 @@ def llm_completer(chain: Sequence[ChatLLM]) -> Completer:
     return complete
 
 
+_BACKCHANNEL_TEXT = (
+    "mhm mhmm mm mmhmm hmm hm uh um huh ah oh ok okay yes yeah yep yup no nope sure right "
+    "alright cool great nice good fine thanks thank you got it i see go on continue please sounds"
+)
+_BACKCHANNEL_WORDS = frozenset(_BACKCHANNEL_TEXT.split())
+_MAX_BACKCHANNEL_WORDS = 4
+
+
+def is_backchannel(text: str) -> bool:
+    """A short reply made only of fillers and acknowledgements ("mhm", "okay, go on")."""
+    words = re.findall(r"[a-z]+", text.casefold())
+    return len(words) <= _MAX_BACKCHANNEL_WORDS and all(w in _BACKCHANNEL_WORDS for w in words)
+
+
+def _question_turns(log: SessionLog) -> list[tuple[int, UserTurn]]:
+    """User turns worth listing as questions, with their 1-based number in the log."""
+    return [
+        (number, turn)
+        for number, turn in enumerate(log.turns, start=1)
+        if not is_backchannel(turn.text)
+    ]
+
+
 def build_insights_input(deck: Deck, log: SessionLog, history: Sequence[llm.ChatItem]) -> str:
     slides = "\n".join(f"{slide.index}: {slide.title}" for slide in deck.slides)
-    turns = "\n".join(f"[slide {turn.slide_index}] {turn.text}" for turn in log.turns)
+    turns = "\n".join(
+        f"{number}. [slide {turn.slide_index}] {turn.text}" for number, turn in _question_turns(log)
+    )
     flags = "\n".join(f"{flag.category}: {flag.question}" for flag in log.flags)
     lines = []
     for item in history:
@@ -160,25 +193,50 @@ def build_insights_input(deck: Deck, log: SessionLog, history: Sequence[llm.Chat
     transcript = "\n".join(lines)[-_MAX_TRANSCRIPT_CHARS:]
     return (
         f'Deck "{deck.title}" slides (index: title):\n{slides}\n\n'
-        f"User turns, with the slide on screen when each was answered:\n{turns or '(none)'}\n\n"
+        f"Numbered user turns, with the slide on screen when each was answered:\n"
+        f"{turns or '(none)'}\n\n"
         f"Compliance flags raised:\n{flags or '(none)'}\n\n"
         f"Transcript:\n{transcript or '(empty)'}"
     )
 
 
+_CODE_FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL | re.IGNORECASE)
+
+
+def parse_insights(text: str) -> ReportInsights:
+    """Parses the LLM's JSON, also when wrapped in a Markdown code fence."""
+    fenced = _CODE_FENCE.match(text)
+    return ReportInsights.model_validate_json(fenced.group(1) if fenced else text)
+
+
 async def generate_insights(
     complete: Completer, material: str, timeout_s: float
 ) -> ReportInsights | None:
+    """The LLM's insights, or None (logged with the reason) when the report must fall back
+    to facts only."""
     chat_ctx = llm.ChatContext.empty()
     chat_ctx.add_message(role="system", content=_INSIGHTS_PROMPT)
     chat_ctx.add_message(role="user", content=material)
     try:
         async with asyncio.timeout(timeout_s):
             text = await complete(chat_ctx)
-        return ReportInsights.model_validate_json(text)
-    except (TimeoutError, APIError, ValidationError) as exc:
-        logger.warning("report insights unavailable, sending facts only: %r", exc)
+    except TimeoutError:
+        logger.warning("report insights timed out after %.1f s, sending facts only", timeout_s)
         return None
+    # Any LLM failure (not only APIError) must still leave the caller a facts-only report.
+    except Exception as exc:
+        logger.warning("report insights failed, sending facts only: %r", exc)
+        return None
+    try:
+        insights = parse_insights(text)
+    except ValidationError as exc:
+        logger.warning(
+            "report insights unparseable, sending facts only: %s; response: %.500r", exc, text
+        )
+        return None
+    if not insights.summary.strip():
+        logger.warning("report LLM returned an empty summary")
+    return insights
 
 
 def _clip(text: str, limit: int = _MAX_TEXT_CHARS) -> str:
@@ -260,15 +318,36 @@ def _fit(report: SessionReport, max_bytes: int) -> SessionReport:
     return report
 
 
+def _report_questions(
+    deck: Deck, log: SessionLog, insights: Sequence[InsightQuestion]
+) -> list[ReportQuestion]:
+    """Every listed user turn, in order, on the slide it was answered on. The LLM's entry for
+    a turn supplies the wording and the answered flag; without one the user's own words are
+    used and the turn counts as answered (the presenter replies to every turn)."""
+    enriched: dict[int, InsightQuestion] = {}
+    for item in insights:
+        enriched.setdefault(item.turn, item)
+    questions = []
+    for number, turn in _question_turns(log)[:_MAX_LIST_ITEMS]:
+        if not 0 <= turn.slide_index < len(deck.slides):
+            continue
+        match = enriched.get(number)
+        text = match.question if match is not None and match.question.strip() else turn.text
+        questions.append(
+            ReportQuestion(
+                question=_clip(text.strip()),
+                slide_index=turn.slide_index,
+                answered=match.answered if match is not None else True,
+            )
+        )
+    return questions
+
+
 def assemble_report(
     deck: Deck, log: SessionLog, insights: ReportInsights, max_bytes: int = REPORT_MAX_BYTES
 ) -> SessionReport:
     slide_seconds = log.slide_seconds()
-    questions = [
-        ReportQuestion(question=_clip(q.question), slide_index=q.slide_index, answered=q.answered)
-        for q in insights.questions[:_MAX_LIST_ITEMS]
-        if 0 <= q.slide_index < len(deck.slides) and q.question.strip()
-    ]
+    questions = _report_questions(deck, log, insights.questions)
     flags = [
         flag.model_copy(update={"question": _clip(flag.question)})
         for flag in log.flags[:_MAX_LIST_ITEMS]
