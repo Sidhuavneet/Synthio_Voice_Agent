@@ -5,6 +5,7 @@ import { TokenSource } from "livekit-client";
 import { useSession, type UseSessionReturn } from "@livekit/components-react";
 import { toErrorMessage } from "@/lib/errors";
 import { describeMicrophoneError } from "@/lib/media-errors";
+import type { MicMode } from "@/lib/mic-mode";
 import type { ConnectionDetails } from "@/lib/types";
 
 // The first job on a cold agent worker can take 30 s or more to start on a busy machine, and
@@ -17,10 +18,14 @@ export interface AgentSessionError {
 }
 
 /**
- * Connects to the LiveKit room described by `connection` with the microphone on,
- * and disconnects on unmount. The agent is dispatched by the token's room configuration.
+ * Connects to the LiveKit room described by `connection` with the microphone on (muted in
+ * tap-to-speak mode), and disconnects on unmount. The agent is dispatched by the token's room
+ * configuration.
  */
-export function useAgentSession(connection: ConnectionDetails): {
+export function useAgentSession(
+  connection: ConnectionDetails,
+  micMode: MicMode,
+): {
   session: UseSessionReturn;
   error: AgentSessionError | null;
   setMicrophoneError: (message: string | null) => void;
@@ -46,11 +51,13 @@ export function useAgentSession(connection: ConnectionDetails): {
   );
   // Enabled alongside (not inside) session.start so a microphone failure can't mask a
   // connection failure; the pre-connect buffer still captures speech before the agent joins.
-  const enableMicrophone = useEffectEvent(() =>
-    session.room.localParticipant.setMicrophoneEnabled(true, undefined, {
-      preConnectBuffer: true,
-    }),
-  );
+  // Tap to speak starts muted, but the mic is still enabled first: permission is asked up front
+  // and the published track unmutes at once on the first tap.
+  const enableMicrophone = useEffectEvent(async () => {
+    const participant = session.room.localParticipant;
+    await participant.setMicrophoneEnabled(true, undefined, { preConnectBuffer: true });
+    if (micMode === "tap") await participant.setMicrophoneEnabled(false);
+  });
   const endSession = useEffectEvent(() => session.end());
 
   useEffect(() => {

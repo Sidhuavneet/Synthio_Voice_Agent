@@ -16,13 +16,14 @@ const TABS: readonly Tab[] = ["latency", "compliance"];
 export interface InsightsCardProps {
   latency: LatencyStats;
   complianceFlags: ComplianceFlag[];
+  className?: string;
 }
 
 /**
  * Latency and compliance in one fixed-height card with tabs, so a growing flag list scrolls
  * inside the card instead of squeezing the transcript.
  */
-export function InsightsCard({ latency, complianceFlags }: InsightsCardProps) {
+export function InsightsCard({ latency, complianceFlags, className }: InsightsCardProps) {
   const [tab, setTab] = useState<Tab>("latency");
   const tabRefs = useRef<Record<Tab, HTMLButtonElement | null>>({ latency: null, compliance: null });
   const id = useId();
@@ -42,7 +43,7 @@ export function InsightsCard({ latency, complianceFlags }: InsightsCardProps) {
   const flagCount = complianceFlags.length;
 
   return (
-    <Card className="flex h-56 shrink-0 flex-col overflow-hidden">
+    <Card className={cn("flex h-56 shrink-0 flex-col overflow-hidden", className)}>
       <div
         role="tablist"
         aria-label="Session insights"
@@ -98,7 +99,7 @@ export function InsightsCard({ latency, complianceFlags }: InsightsCardProps) {
   );
 }
 
-interface TabButtonProps {
+export interface TabButtonProps {
   ref: (el: HTMLButtonElement | null) => void;
   id: string;
   controls: string;
@@ -107,7 +108,7 @@ interface TabButtonProps {
   children: ReactNode;
 }
 
-function TabButton({ ref, id, controls, selected, onSelect, children }: TabButtonProps) {
+export function TabButton({ ref, id, controls, selected, onSelect, children }: TabButtonProps) {
   return (
     <button
       ref={ref}

@@ -9,6 +9,8 @@ export const SLIDE_PRESENTED_ATTRIBUTE = "slide.presented";
 /** `presenting` | `answering` | `idle` | `finished` (deck done, wrap-up played out). */
 export const PRESENTATION_STATE_ATTRIBUTE = "presentation.state";
 export const NAVIGATE_RPC_METHOD = "slides.navigate";
+/** Tap to speak: stops the agent so the user can talk; `{}` -> `{ "ok": true }`. */
+export const INTERRUPT_RPC_METHOD = "agent.interrupt";
 export const EVENTS_TOPIC = "synthio.events";
 export const REPORT_RPC_METHOD = "session.report";
 /** The agent generates the report with an LLM call, so allow longer than the 15 s default. */

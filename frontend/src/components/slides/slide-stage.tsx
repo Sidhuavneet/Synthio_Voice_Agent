@@ -40,16 +40,13 @@ export function SlideStage({
       <p aria-live="polite" className="sr-only">
         {presenterStatus === "live" ? `${position}: ${slide.title}` : ""}
       </p>
-      {/* Decorations are clipped on their own layer so slide content is never cut off. */}
+      {/* Decorations are clipped on their own layer so slide content is never cut off. Deck
+          progress is shown by the slide progress bar above the stage. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl"
       >
         <div className="absolute -top-40 -right-40 size-96 rounded-full bg-[radial-gradient(circle,rgb(124_58_237/0.14),transparent_70%)]" />
-        <div
-          className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--color-accent),var(--color-violet))]"
-          style={{ width: `${((slide.index + 1) / total) * 100}%` }}
-        />
       </div>
 
       <div className="flex h-full flex-col p-6 sm:p-8 xl:px-10 xl:py-8">

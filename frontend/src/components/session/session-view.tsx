@@ -14,11 +14,10 @@ import { SessionReportView } from "@/components/report/session-report-view";
 import { AutoReportNotice } from "@/components/session/auto-report-notice";
 import { ComplianceToast } from "@/components/session/compliance-toast";
 import { ControlBar } from "@/components/session/control-bar";
-import { InsightsCard } from "@/components/session/insights-card";
-import { PresenterPanel } from "@/components/session/presenter-panel";
+import { PresenterBubble } from "@/components/session/presenter-bubble";
 import { StartAudioPrompt } from "@/components/session/start-audio-prompt";
 import { SuggestedQuestions } from "@/components/session/suggested-questions";
-import { SlideRail } from "@/components/slides/slide-rail";
+import { SlideProgressBar } from "@/components/slides/slide-progress-bar";
 import { SlideStage, type PresenterStatus } from "@/components/slides/slide-stage";
 import { Alert } from "@/components/ui/alert";
 import { BrandMark } from "@/components/ui/brand-mark";
@@ -28,6 +27,7 @@ import { useAgentSession, type AgentSessionError } from "@/hooks/use-agent-sessi
 import { useAutoReport } from "@/hooks/use-auto-report";
 import { useDeckProgress } from "@/hooks/use-deck-progress";
 import { useElapsedFlag } from "@/hooks/use-elapsed-flag";
+import { useMicMode } from "@/hooks/use-mic-mode";
 import { useNarrationMark } from "@/hooks/use-narration-mark";
 import { useSessionReport } from "@/hooks/use-session-report";
 import { useSlideNavigation } from "@/hooks/use-slide-navigation";
@@ -36,6 +36,7 @@ import { useSlideTimeline } from "@/hooks/use-slide-timeline";
 import { useTranscriptRows } from "@/hooks/use-transcript-rows";
 import type { Presentation } from "@/hooks/use-start-presentation";
 import { getSlideCitations } from "@/lib/deck";
+import type { MicMode } from "@/lib/mic-mode";
 import { saveReport } from "@/lib/report-history";
 import { interruptedPoint, questionJumpTo, type SessionSpan } from "@/lib/timeline";
 import type { TranscriptRow } from "@/lib/transcript";
@@ -57,7 +58,11 @@ export interface SessionViewProps {
 }
 
 export function SessionView({ presentation, onExit }: SessionViewProps) {
-  const { session, error, setMicrophoneError } = useAgentSession(presentation.connection);
+  const [micMode, setMicMode] = useMicMode();
+  const { session, error, setMicrophoneError } = useAgentSession(
+    presentation.connection,
+    micMode,
+  );
 
   return (
     <SessionProvider session={session}>
@@ -66,6 +71,8 @@ export function SessionView({ presentation, onExit }: SessionViewProps) {
         sessionError={error}
         onExit={onExit}
         onMicrophoneError={setMicrophoneError}
+        micMode={micMode}
+        onMicModeChange={setMicMode}
       />
     </SessionProvider>
   );
@@ -76,6 +83,8 @@ interface SessionScreenProps {
   sessionError: AgentSessionError | null;
   onExit: () => void;
   onMicrophoneError: (message: string | null) => void;
+  micMode: MicMode;
+  onMicModeChange: (mode: MicMode) => void;
 }
 
 /** Owns state that outlives the live session (events, slide timeline); swaps in the report. */
@@ -179,6 +188,8 @@ function SessionLayout({
   onExit,
   onEndWithReport,
   onMicrophoneError,
+  micMode,
+  onMicModeChange,
 }: SessionLayoutProps) {
   const session = useSessionContext();
   const agent = useAgent();
@@ -229,9 +240,10 @@ function SessionLayout({
   );
 
   return (
-    // Fixed to the viewport on large screens so only the slide column and transcript scroll.
+    // Fixed to the viewport on large screens so only the slide column scrolls. The bottom
+    // padding keeps the controls clear of the floating presenter bubble.
     // lg:flex-none stops the body's flex column from overriding h-dvh with content height.
-    <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-5 px-4 py-4 sm:px-6 lg:h-dvh lg:min-h-0 lg:flex-none lg:py-6">
+    <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pt-4 pb-24 sm:px-6 lg:h-dvh lg:min-h-0 lg:flex-none lg:pt-6">
       <header className="flex shrink-0 items-center justify-between gap-4">
         <Button variant="ghost" size="sm" className="-ml-3" onClick={onExit}>
           <ArrowLeft aria-hidden />
@@ -241,98 +253,100 @@ function SessionLayout({
         <BrandMark />
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_380px]">
-        <main className="flex min-w-0 flex-col gap-4 lg:min-h-0 lg:overflow-y-auto">
-          {agentError && (
-            <Alert title={SESSION_ERROR_TITLES[agentError.code]} action={backAction}>
-              {agentError.message}
-            </Alert>
-          )}
-          {agentFailed &&
-            (agentWasConnected ? (
-              <Alert title="Presenter disconnected" action={backAction}>
-                The presenter left the session unexpectedly. Your progress is saved, so you can
-                resume from the deck list.
-              </Alert>
-            ) : (
-              <Alert title="The presenter couldn't join" action={backAction}>
-                {agent.failureReasons.join(" ")} Make sure the agent worker is running (uv run
-                synthio-agent dev).
-              </Alert>
-            ))}
-          {droppedConnection && agent.state !== "failed" && !connectionFailed && !agentError && (
-            <Alert title="Session ended" action={backAction}>
-              The connection to the presentation room was closed.
-            </Alert>
-          )}
-          {sessionError && (
-            <Alert
-              title={
-                sessionError.kind === "microphone" ? "Microphone unavailable" : "Connection problem"
-              }
-              action={connectionFailed ? backAction : undefined}
-            >
-              {sessionError.message}
-            </Alert>
-          )}
-
-          <SlideStage
-            deckTitle={deck.title}
-            slide={slide}
-            total={deck.slides.length}
-            presenterStatus={presenterStatus}
-            activePoint={sync.pointIndex}
-            pausedPoint={interruptedPoint(events.timeline, index, narration)}
-            jump={questionJumpTo(events.timeline, index, narration)}
-            citations={getSlideCitations(deck, slide)}
-          />
-
-          <SlideRail
-            slides={deck.slides}
-            currentIndex={index}
-            presented={sync.presented}
-            pendingIndex={navigation.pendingIndex}
-            disabled={!navigation.canNavigate}
-            onSelect={(target) => void navigation.navigate(target)}
-          />
-          {navigation.error && (
-            <p role="alert" className="text-center text-sm text-danger">
-              {navigation.error}
-            </p>
-          )}
-
-          <SuggestedQuestions
-            questions={deck.suggestedQuestions}
-            onAsk={send}
-            disabled={presenterStatus !== "live"}
-          />
-
-          <div className="mt-auto space-y-3 pt-1">
-            <StartAudioPrompt />
-            {autoReport.phase === "counting" && (
-              <AutoReportNotice
-                secondsLeft={autoReport.secondsLeft}
-                onOpenNow={endWithReport}
-                onStay={autoReport.stay}
-              />
-            )}
-            <ControlBar onEndWithReport={endWithReport} onMicrophoneError={onMicrophoneError} />
-            <p className="text-center text-xs text-ink-muted sm:text-left">{deck.disclaimer}</p>
-          </div>
-        </main>
-
-        <aside className="flex min-h-0 flex-col gap-4">
-          {/* The presenter card takes all remaining height; the insights card never grows. */}
-          <div className="flex h-[28rem] min-h-0 flex-col lg:h-auto lg:flex-1">
-            <PresenterPanel
-              presenter={deck.presenter}
-              transcript={transcript}
-              slides={deck.slides}
-            />
-          </div>
-          <InsightsCard latency={events.latency} complianceFlags={events.complianceFlags} />
-        </aside>
+      <div className="shrink-0 space-y-1">
+        <SlideProgressBar
+          slides={deck.slides}
+          currentIndex={index}
+          pointIndex={sync.pointIndex}
+          presented={sync.presented}
+          pendingIndex={navigation.pendingIndex}
+          disabled={!navigation.canNavigate}
+          onSelect={(target) => void navigation.navigate(target)}
+        />
+        {navigation.error && (
+          <p role="alert" className="text-center text-sm text-danger">
+            {navigation.error}
+          </p>
+        )}
       </div>
+
+      <main className="flex min-w-0 flex-1 flex-col gap-4 lg:min-h-0 lg:overflow-y-auto">
+        {agentError && (
+          <Alert title={SESSION_ERROR_TITLES[agentError.code]} action={backAction}>
+            {agentError.message}
+          </Alert>
+        )}
+        {agentFailed &&
+          (agentWasConnected ? (
+            <Alert title="Presenter disconnected" action={backAction}>
+              The presenter left the session unexpectedly. Your progress is saved, so you can
+              resume from the deck list.
+            </Alert>
+          ) : (
+            <Alert title="The presenter couldn't join" action={backAction}>
+              {agent.failureReasons.join(" ")} Make sure the agent worker is running (uv run
+              synthio-agent dev).
+            </Alert>
+          ))}
+        {droppedConnection && agent.state !== "failed" && !connectionFailed && !agentError && (
+          <Alert title="Session ended" action={backAction}>
+            The connection to the presentation room was closed.
+          </Alert>
+        )}
+        {sessionError && (
+          <Alert
+            title={
+              sessionError.kind === "microphone" ? "Microphone unavailable" : "Connection problem"
+            }
+            action={connectionFailed ? backAction : undefined}
+          >
+            {sessionError.message}
+          </Alert>
+        )}
+
+        <SlideStage
+          deckTitle={deck.title}
+          slide={slide}
+          total={deck.slides.length}
+          presenterStatus={presenterStatus}
+          activePoint={sync.pointIndex}
+          pausedPoint={interruptedPoint(events.timeline, index, narration)}
+          jump={questionJumpTo(events.timeline, index, narration)}
+          citations={getSlideCitations(deck, slide)}
+        />
+
+        <SuggestedQuestions
+          questions={deck.suggestedQuestions}
+          onAsk={send}
+          disabled={presenterStatus !== "live"}
+        />
+
+        <div className="mt-auto space-y-3 pt-1">
+          <StartAudioPrompt />
+          {autoReport.phase === "counting" && (
+            <AutoReportNotice
+              secondsLeft={autoReport.secondsLeft}
+              onOpenNow={endWithReport}
+              onStay={autoReport.stay}
+            />
+          )}
+          <ControlBar
+            micMode={micMode}
+            onMicModeChange={onMicModeChange}
+            onEndWithReport={endWithReport}
+            onMicrophoneError={onMicrophoneError}
+          />
+          <p className="text-center text-xs text-ink-muted sm:text-left">{deck.disclaimer}</p>
+        </div>
+      </main>
+
+      <PresenterBubble
+        presenter={deck.presenter}
+        transcript={transcript}
+        slides={deck.slides}
+        latency={events.latency}
+        complianceFlags={events.complianceFlags}
+      />
     </div>
   );
 }

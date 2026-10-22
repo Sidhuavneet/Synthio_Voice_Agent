@@ -22,6 +22,11 @@ const dotClasses: Record<StatusTone, string> = {
   error: "bg-danger",
 };
 
+/** Human-readable agent state, e.g. "Speaking". */
+export function agentStatusLabel(state: AgentState): string {
+  return STATUS[state].label;
+}
+
 export function AgentStatus({ state }: { state: AgentState }) {
   const { label, tone } = STATUS[state];
   return (

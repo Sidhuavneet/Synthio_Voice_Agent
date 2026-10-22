@@ -27,8 +27,8 @@ npm run build
 
 - `src/app` — route, layout and theme tokens (`globals.css`)
 - `src/components/deck-picker` — home screen: deck cards, loading/empty/error states
-- `src/components/session` — LiveKit session: presenter panel, transcript, controls
-- `src/components/slides` — slide stage and slide rail
+- `src/components/session` — LiveKit session: floating presenter bubble (conversation + insights panel), transcript, controls (open mic / tap to speak)
+- `src/components/slides` — slide stage and segmented slide progress bar
 - `src/components/ui` — shared primitives (Button, Card, Chip, Alert)
 - `src/hooks` — data loading, session lifecycle, slide sync (`slide.index` + `deck.id` attributes) and
   navigation (`slides.navigate` RPC)
