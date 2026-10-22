@@ -91,7 +91,7 @@ Import the repo, set **Root Directory** to `frontend`, and add `NEXT_PUBLIC_API_
 ### 4. Auto-deploy
 
 - **Render** and **Vercel** redeploy on every push to `main`.
-- **Wake:** [`.github/workflows/wake-agent.yml`](.github/workflows/wake-agent.yml) redeploys the agent if `lk agent status` shows it Sleeping (every 30 min, best-effort, or on demand via Actions → Wake agent → Run workflow). Same three secrets.
+- **Wake:** [`.github/workflows/wake-agent.yml`](.github/workflows/wake-agent.yml) redeploys the agent if `lk agent status` shows it Sleeping (every 10 min, best-effort, or on demand via Actions → Wake agent → Run workflow). Same three secrets.
 - **Agent:** [`.github/workflows/deploy-agent.yml`](.github/workflows/deploy-agent.yml) runs LiveKit's [deploy action](https://github.com/livekit/deploy-action) (`lk agent deploy`) on pushes to `main` that touch `backend/`. Add repo secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`; it skips (successfully, with a notice) until those secrets are set and `backend/livekit.toml` is committed. Without it, run `lk agent deploy` by hand. Agent secrets stay in LiveKit Cloud (`lk agent update-secrets`).
 
 ## 60-second demo
