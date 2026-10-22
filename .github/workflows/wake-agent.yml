@@ -1,0 +1,66 @@
+# Wakes the LiveKit Cloud agent if it is asleep. On the free plan an idle agent scales to zero
+# and has been seen not to wake for new sessions; a redeploy brings it back. Runs on a schedule
+# (best-effort GitHub cron, a backup to the API/agent mutual keep-alive) and on demand from the
+# Actions tab ("Run workflow"). Needs repo secrets LIVEKIT_URL, LIVEKIT_API_KEY and
+# LIVEKIT_API_SECRET; skips with a notice until they are set.
+name: Wake agent
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Redeploy even if the agent is not sleeping
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wake-agent
+  cancel-in-progress: false
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    env:
+      LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
+      LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
+      LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        id: secrets
+        run: |
+          if [ -z "$LIVEKIT_URL" ] || [ -z "$LIVEKIT_API_KEY" ] || [ -z "$LIVEKIT_API_SECRET" ]; then
+            echo "::notice::LiveKit secrets are not set; skipping."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install LiveKit CLI
+        if: steps.secrets.outputs.present == 'true'
+        run: curl -sSL https://get.livekit.io/cli | bash
+
+      - name: Check agent status
+        if: steps.secrets.outputs.present == 'true'
+        id: status
+        run: |
+          status="$(lk agent status --yes 2>&1 || true)"
+          echo "$status"
+          if echo "$status" | grep -q "Sleeping"; then
+            echo "sleeping=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sleeping=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Redeploy to wake the agent
+        if: steps.secrets.outputs.present == 'true' && (steps.status.outputs.sleeping == 'true' || inputs.force)
+        run: lk agent deploy --yes
