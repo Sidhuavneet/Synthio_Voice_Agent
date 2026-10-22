@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from synthio_backend.api.routers import decks, health, session
+from synthio_backend.api.routers import agent, decks, health, session
 from synthio_backend.core.config import Settings, get_settings
 from synthio_backend.decks.repository import DeckNotFoundError, DeckRepository
 from synthio_backend.session.tokens import LiveKitNotConfiguredError
@@ -38,7 +38,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.add_exception_handler(DeckNotFoundError, _deck_not_found)
     app.add_exception_handler(LiveKitNotConfiguredError, _livekit_not_configured)
-    for router in (health.router, decks.router, session.router):
+    for router in (health.router, decks.router, session.router, agent.router):
         app.include_router(router, prefix=API_PREFIX)
     return app
 

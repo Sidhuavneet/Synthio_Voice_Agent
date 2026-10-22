@@ -86,6 +86,7 @@ JSON keys are **camelCase** on the wire (Pydantic alias generator); Python field
 | GET | `/api/health` | — | `{ "status": "ok" }` |
 | GET | `/api/decks` | — | `DeckSummary[]` = `[{ id, title, subtitle, category, slideCount }]` |
 | GET | `/api/decks/{deckId}` | — | `Deck` (full schema above) |
+| POST | `/api/agent/warmup` | — | `{ "status": "dispatched" | "skipped" }`: dispatches a `{"warmup":true}` job the agent ends at once (keep-alive; rate-limited to 1/min) |
 | POST | `/api/session` | `{ "deckId": string, "resume"?: { "slideIndex": number, "presented": number[] } }` | `{ serverUrl, roomName, participantName, participantToken }` |
 
 Errors: `404 {"detail": "..."}` for unknown deck, `422` for validation, `503 {"detail": "LiveKit is not configured"}` when credentials are missing.

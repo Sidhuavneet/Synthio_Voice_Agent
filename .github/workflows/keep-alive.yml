@@ -1,7 +1,7 @@
 # Pings the API so the free Render web service stays warm: it sleeps after ~15 minutes idle and
 # then takes 30-50 s to cold-start. GitHub runs scheduled workflows on a best-effort basis (runs
 # can be delayed or dropped), so this narrows rather than eliminates cold starts.
-name: Keep API awake
+name: Keep API and agent awake
 
 on:
   schedule:
@@ -17,3 +17,7 @@ jobs:
     steps:
       - name: Ping /api/health
         run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 https://synthio-api.onrender.com/api/health
+      # LiveKit Cloud's free plan scales an idle agent to zero and it has been seen not to wake
+      # for new sessions; a regular warm-up dispatch keeps it active (see session/warmup.py).
+      - name: Warm up the agent
+        run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 -X POST https://synthio-api.onrender.com/api/agent/warmup

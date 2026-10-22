@@ -64,6 +64,7 @@ from synthio_backend.agent.slides import SlideChange, SlideController
 from synthio_backend.agent.turn_metrics import TurnMetricsAggregator
 from synthio_backend.core.config import Settings, get_settings, load_env_files
 from synthio_backend.decks.repository import DeckRepository
+from synthio_backend.session.warmup import is_warmup
 
 load_env_files()
 
@@ -215,6 +216,10 @@ async def _on_text_input(
 
 @server.rtc_session(agent_name=get_settings().agent_name)
 async def presenter_session(ctx: JobContext) -> None:
+    if is_warmup(ctx.job.metadata):
+        # Keep-alive ping (see session/warmup.py): the dispatch itself is the activity.
+        logger.info("warm-up job received; ending it")
+        return
     settings = get_settings()
     repository: DeckRepository = ctx.proc.userdata[_DECK_REPOSITORY_KEY]
     job = select_job(repository, ctx.job.metadata)
