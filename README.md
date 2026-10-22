@@ -51,6 +51,8 @@ Open http://localhost:3000, pick a deck, allow the microphone, and start talking
 
 Zero cost: agent on [LiveKit Cloud Agents](https://docs.livekit.io/deploy/agents/) (free Build plan), API on a free [Render](https://render.com) web service, frontend on [Vercel](https://vercel.com) Hobby.
 
+Free tiers sleep when idle: [`keep-alive.yml`](.github/workflows/keep-alive.yml) pings the API every 10 minutes (best-effort GitHub cron), and the UI shows a "waking up" message when the API or the agent is cold-starting.
+
 | Part | Host | Config | Redeploys on push to `main` |
 |---|---|---|---|
 | Agent worker (`synthio-agent`) | LiveKit Cloud | [`backend/Dockerfile`](backend/Dockerfile), `backend/livekit.toml` | via [`deploy-agent.yml`](.github/workflows/deploy-agent.yml) (or run `lk agent deploy`) |
@@ -89,7 +91,7 @@ Import the repo, set **Root Directory** to `frontend`, and add `NEXT_PUBLIC_API_
 ### 4. Auto-deploy
 
 - **Render** and **Vercel** redeploy on every push to `main`.
-- **Agent:** [`.github/workflows/deploy-agent.yml`](.github/workflows/deploy-agent.yml) runs LiveKit's [deploy action](https://github.com/livekit/deploy-action) (`lk agent deploy`) on pushes to `main` that touch `backend/`. Add repo secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`; it skips until `backend/livekit.toml` is committed. Without it, run `lk agent deploy` by hand. Agent secrets stay in LiveKit Cloud (`lk agent update-secrets`).
+- **Agent:** [`.github/workflows/deploy-agent.yml`](.github/workflows/deploy-agent.yml) runs LiveKit's [deploy action](https://github.com/livekit/deploy-action) (`lk agent deploy`) on pushes to `main` that touch `backend/`. Add repo secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`; it skips (successfully, with a notice) until those secrets are set and `backend/livekit.toml` is committed. Without it, run `lk agent deploy` by hand. Agent secrets stay in LiveKit Cloud (`lk agent update-secrets`).
 
 ## 60-second demo
 

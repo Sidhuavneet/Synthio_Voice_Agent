@@ -4,7 +4,8 @@ import { cn } from "@/lib/cn";
 import type { Citation } from "@/lib/deck";
 import type { Slide, SlideChange, SlidePoint } from "@/lib/types";
 
-export type PresenterStatus = "connecting" | "live" | "unavailable";
+/** `waking`: in the room, but the presenter is slow to join (an agent cold start). */
+export type PresenterStatus = "connecting" | "waking" | "live" | "unavailable";
 
 export interface SlideStageProps {
   deckTitle: string;
@@ -185,6 +186,15 @@ function PresenterBadge({ status, current, total }: PresenterBadgeProps) {
       <Chip tone="neutral" className="shrink-0">
         <AlertCircle aria-hidden className="size-3" />
         Presenter unavailable
+      </Chip>
+    );
+  }
+  if (status === "waking") {
+    return (
+      <Chip tone="neutral" className="min-w-0 rounded-2xl text-pretty">
+        <Loader2 aria-hidden className="size-3 shrink-0 animate-spin" />
+        Starting the presenter — the first session after a quiet period can take up to 30
+        seconds.
       </Chip>
     );
   }

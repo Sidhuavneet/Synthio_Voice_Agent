@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { useAgentEvents, type AgentEvents } from "@/hooks/use-agent-events";
 import { useAgentSession, type AgentSessionError } from "@/hooks/use-agent-session";
 import { useDeckProgress } from "@/hooks/use-deck-progress";
+import { useElapsedFlag } from "@/hooks/use-elapsed-flag";
 import { useNarrationMark } from "@/hooks/use-narration-mark";
 import { useSessionReport } from "@/hooks/use-session-report";
 import { useSlideNavigation } from "@/hooks/use-slide-navigation";
@@ -35,6 +36,8 @@ import { interruptedPoint, questionJumpTo, type SessionSpan } from "@/lib/timeli
 import type { Deck, SessionErrorCode, SessionFacts } from "@/lib/types";
 
 const BACK_LABEL = "Back to decks";
+// A warm agent joins within a few seconds; longer than this is usually a cold start.
+const AGENT_SLOW_MS = 6_000;
 
 const SESSION_ERROR_TITLES: Record<SessionErrorCode, string> = {
   quota_exceeded: "Voice service limit reached",
@@ -157,11 +160,17 @@ function SessionLayout({
   const connectionFailed = sessionError?.kind === "connection";
   // The agent's own error report explains its departure better than useAgent's failure.
   const agentFailed = agent.state === "failed" && !connectionFailed && !agentError;
-  const presenterStatus: PresenterStatus =
-    agent.state === "failed" || connectionFailed || droppedConnection || agentError
-      ? "unavailable"
-      : isSynced
-        ? "live"
+  const unavailable =
+    agent.state === "failed" || connectionFailed || droppedConnection || Boolean(agentError);
+  // In the room but no presenter yet: past a few seconds that's an agent cold start.
+  const awaitingAgent = !unavailable && session.isConnected && !agent.isConnected;
+  const agentSlow = useElapsedFlag(awaitingAgent, AGENT_SLOW_MS);
+  const presenterStatus: PresenterStatus = unavailable
+    ? "unavailable"
+    : isSynced
+      ? "live"
+      : agentSlow
+        ? "waking"
         : "connecting";
 
   const backAction = (

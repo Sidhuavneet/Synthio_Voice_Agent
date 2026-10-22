@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, History, Layers, Loader2 } from "lucide-react";
+import { WakingNotice } from "@/components/deck-picker/deck-picker-states";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { useSavedProgress } from "@/hooks/use-deck-progress";
@@ -13,12 +14,21 @@ export interface DeckCardProps {
   deck: DeckSummary;
   featured?: boolean;
   pending: boolean;
+  /** The pending start is taking long enough to explain why. */
+  slow?: boolean;
   disabled: boolean;
   /** `progress` is the deck's saved progress, if any. */
   onStart: (deck: DeckSummary, progress: DeckProgress | null) => void;
 }
 
-export function DeckCard({ deck, featured = false, pending, disabled, onStart }: DeckCardProps) {
+export function DeckCard({
+  deck,
+  featured = false,
+  pending,
+  slow = false,
+  disabled,
+  onStart,
+}: DeckCardProps) {
   const progress = useSavedProgress(deck.id, deck.slideCount);
 
   return (
@@ -99,6 +109,9 @@ export function DeckCard({ deck, featured = false, pending, disabled, onStart }:
           )}
         </Button>
       </div>
+      {pending && slow && (
+        <WakingNotice inverse={featured} className="relative mt-4" />
+      )}
     </article>
   );
 }

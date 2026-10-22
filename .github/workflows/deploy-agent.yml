@@ -7,6 +7,7 @@
 #      (it holds the agent id; until it exists this workflow skips the deploy).
 #   2. Add repo secrets (Settings -> Secrets and variables -> Actions): LIVEKIT_URL,
 #      LIVEKIT_API_KEY, LIVEKIT_API_SECRET (same values as the LiveKit Cloud project).
+#      Until all three are set this workflow skips the deploy.
 # Agent secrets (DEEPGRAM_API_KEY, ...) stay in LiveKit Cloud; manage them with
 # `lk agent update-secrets`. This workflow does not change them.
 name: Deploy agent
@@ -46,8 +47,23 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Secrets can't be referenced in `if:`, so check them through env.
+      - name: Skip until the LiveKit secrets are set
+        id: secrets
+        env:
+          LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
+          LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
+          LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+        run: |
+          if [ -n "$LIVEKIT_URL" ] && [ -n "$LIVEKIT_API_KEY" ] && [ -n "$LIVEKIT_API_SECRET" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::LIVEKIT_URL, LIVEKIT_API_KEY or LIVEKIT_API_SECRET repo secret not set; skipping deploy."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Deploy to LiveKit Cloud
-        if: steps.config.outputs.present == 'true'
+        if: steps.config.outputs.present == 'true' && steps.secrets.outputs.present == 'true'
         uses: livekit/deploy-action@v2.12.2
         env:
           LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}

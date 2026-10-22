@@ -1,0 +1,19 @@
+# Pings the API so the free Render web service stays warm: it sleeps after ~15 minutes idle and
+# then takes 30-50 s to cold-start. GitHub runs scheduled workflows on a best-effort basis (runs
+# can be delayed or dropped), so this narrows rather than eliminates cold starts.
+name: Keep API awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 https://synthio-api.onrender.com/api/health

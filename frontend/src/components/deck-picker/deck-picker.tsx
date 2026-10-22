@@ -8,12 +8,17 @@ import {
   DeckGridSkeleton,
   DecksError,
   EmptyDecks,
+  WakingNotice,
 } from "@/components/deck-picker/deck-picker-states";
 import { ResumeDialog } from "@/components/deck-picker/resume-dialog";
 import { useDecks } from "@/hooks/use-decks";
+import { useElapsedFlag } from "@/hooks/use-elapsed-flag";
 import type { StartError } from "@/hooks/use-start-presentation";
 import { resumeSlideIndex, toResumeRequest, type DeckProgress } from "@/lib/progress";
 import type { DeckSummary, ResumeRequest } from "@/lib/types";
+
+// Longer than a warm request; a cold free-tier API takes 30–50 s.
+const SLOW_REQUEST_MS = 4_000;
 
 export interface DeckPickerProps {
   pendingDeckId: string | null;
@@ -37,6 +42,8 @@ export function DeckPicker({
   const { state, reload } = useDecks();
   const errorRef = useRef<HTMLDivElement>(null);
   const [resumeChoice, setResumeChoice] = useState<ResumeChoice | null>(null);
+  const slowLoad = useElapsedFlag(state.status === "loading", SLOW_REQUEST_MS);
+  const slowStart = useElapsedFlag(pendingDeckId !== null, SLOW_REQUEST_MS);
 
   const handleStart = (deck: DeckSummary, progress: DeckProgress | null) => {
     if (progress) setResumeChoice({ deck, progress });
@@ -88,6 +95,7 @@ export function DeckPicker({
           </div>
         )}
 
+        {slowLoad && <WakingNotice />}
         {state.status === "loading" && <DeckGridSkeleton />}
         {state.status === "error" && (
           <DecksError message={state.message} unreachable={state.unreachable} onRetry={reload} />
@@ -101,6 +109,7 @@ export function DeckPicker({
                 deck={deck}
                 featured={i === 0}
                 pending={pendingDeckId === deck.id}
+                slow={slowStart}
                 disabled={pendingDeckId !== null}
                 onStart={handleStart}
               />

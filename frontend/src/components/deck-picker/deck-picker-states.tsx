@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { FolderOpen, RefreshCw, ServerOff } from "lucide-react";
+import { FolderOpen, Loader2, RefreshCw, ServerOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
 
 export function DeckGridSkeleton() {
   return (
@@ -21,6 +22,29 @@ export function DeckGridSkeleton() {
         />
       ))}
     </div>
+  );
+}
+
+export interface WakingNoticeProps {
+  /** Light text for dark backgrounds. */
+  inverse?: boolean;
+  className?: string;
+}
+
+/** Shown when an API call is slow, which on the hosted demo means the server is cold-starting. */
+export function WakingNotice({ inverse = false, className }: WakingNoticeProps) {
+  return (
+    <p
+      role="status"
+      className={cn(
+        "flex items-start gap-2 text-sm text-pretty",
+        inverse ? "text-white/80" : "text-ink-muted",
+        className,
+      )}
+    >
+      <Loader2 aria-hidden className="mt-0.5 size-4 shrink-0 animate-spin" />
+      Waking up the server — the free hosting sleeps when idle, this can take up to a minute.
+    </p>
   );
 }
 
