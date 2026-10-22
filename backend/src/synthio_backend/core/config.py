@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     frontend_origins: str = "http://localhost:3000"
     frontend_origin_regex: str | None = None
     agent_name: str = "synthio-presenter"
+    # Hosted free tiers sleep when idle (see session/warmup.py). The API dispatches a warm-up
+    # job to the agent this often (0 = off), and the agent pings ``self_ping_url`` (the API's
+    # health URL) every ``self_ping_interval_s`` (no URL = off), so each keeps the other awake.
+    agent_warmup_interval_s: float = Field(default=3600.0, ge=0)
+    self_ping_url: str | None = None
+    self_ping_interval_s: float = Field(default=600.0, gt=0)
 
     stt_model: str = "deepgram/nova-3"
     llm_model: str = "google/gemini-2.5-flash"

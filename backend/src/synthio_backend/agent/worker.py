@@ -64,7 +64,7 @@ from synthio_backend.agent.slides import SlideChange, SlideController
 from synthio_backend.agent.turn_metrics import TurnMetricsAggregator
 from synthio_backend.core.config import Settings, get_settings, load_env_files
 from synthio_backend.decks.repository import DeckRepository
-from synthio_backend.session.warmup import is_warmup
+from synthio_backend.session.warmup import is_warmup, start_self_ping
 
 load_env_files()
 
@@ -288,4 +288,8 @@ async def presenter_session(ctx: JobContext) -> None:
 
 
 def run() -> None:
+    settings = get_settings()
+    if settings.self_ping_url:
+        # Keeps the free-tier API awake while the agent runs (see session/warmup.py).
+        start_self_ping(settings.self_ping_url, settings.self_ping_interval_s)
     cli.run_app(server)

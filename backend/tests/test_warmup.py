@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from synthio_backend.session import warmup
@@ -43,3 +45,23 @@ async def test_dispatch_warmup_requires_livekit() -> None:
     settings = make_settings(livekit_url=None, livekit_api_key=None, livekit_api_secret=None)
     with pytest.raises(LiveKitNotConfiguredError):
         await warmup.dispatch_warmup(settings)
+
+
+async def test_warmup_loop_keeps_running_after_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = 0
+
+    async def failing_dispatch(_: object) -> bool:
+        nonlocal calls
+        calls += 1
+        if calls == 3:
+            raise asyncio.CancelledError
+        raise RuntimeError("network down")
+
+    async def no_sleep(_: float) -> None:
+        return None
+
+    monkeypatch.setattr(warmup, "dispatch_warmup", failing_dispatch)
+    monkeypatch.setattr(warmup.asyncio, "sleep", no_sleep)
+    with pytest.raises(asyncio.CancelledError):
+        await warmup.warmup_loop(make_settings(), interval_s=1.0)
+    assert calls == 3

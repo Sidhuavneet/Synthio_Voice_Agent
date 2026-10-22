@@ -1,5 +1,9 @@
 """FastAPI application factory and ``synthio-api`` entry point."""
 
+import asyncio
+import contextlib
+from collections.abc import AsyncIterator
+
 import uvicorn
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +13,7 @@ from synthio_backend.api.routers import agent, decks, health, session
 from synthio_backend.core.config import Settings, get_settings
 from synthio_backend.decks.repository import DeckNotFoundError, DeckRepository
 from synthio_backend.session.tokens import LiveKitNotConfiguredError
+from synthio_backend.session.warmup import warmup_loop
 
 API_PREFIX = "/api"
 
@@ -25,7 +30,19 @@ async def _livekit_not_configured(_: Request, exc: Exception) -> JSONResponse:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
-    app = FastAPI(title="Synthio Presenter API", version="0.1.0")
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        task = None
+        if settings.agent_warmup_interval_s > 0 and settings.livekit_url:
+            task = asyncio.create_task(warmup_loop(settings, settings.agent_warmup_interval_s))
+        try:
+            yield
+        finally:
+            if task is not None:
+                task.cancel()
+
+    app = FastAPI(title="Synthio Presenter API", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     # Loading here validates every deck file, so a broken deck fails at startup.
     app.state.deck_repository = DeckRepository.from_directory(settings.decks_dir)
