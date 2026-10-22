@@ -107,7 +107,7 @@ The **agent is the single source of truth** for the current slide.
 | `slide.index` | current 0-based slide index as a string, e.g. `"2"` |
 | `deck.id` | deck id the agent loaded |
 | `slide.point` | index of the point currently being narrated as a string, `"-1"` when none (Q&A, idle) |
-| `slide.presented` | comma-separated indices of slides fully presented so far, e.g. `"0,1,2"` (used for resume + rail ticks) |
+| `slide.presented` | comma-separated indices of slides fully presented so far, e.g. `"0,1,2"` (used for resume + the slide progress bar) |
 | `presentation.state` | the presentation's mode: `"presenting"` (scripted narration), `"answering"` (replying to the user), `"idle"` (between slides or waiting), `"finished"` (every slide presented **and** the wrap-up has played out; stays `finished` through later Q&A). Starts as `"idle"`. |
 
 The frontend reads these with `useParticipantAttributes` / `useVoiceAssistant().agent` and renders the matching slide.
@@ -118,6 +118,7 @@ Built-in attributes (`lk.agent.state`) and transcriptions (`lk.transcription` te
 | Method | Payload (JSON string) | Response | Effect |
 |---|---|---|---|
 | `slides.navigate` | `{ "index": number }` | `{ "ok": true, "index": number }` or `{ "ok": false, "error": string }` | User clicked a slide/prev/next. Agent interrupts, sets `slide.index`, moves the presentation cursor there. Not yet presented → presents it. Already presented → asks "We've covered this one, shall I go through it again?" and presents it after `REPLAY_CONFIRM_DELAY` (1.0 s) of user silence (yes by default). |
+| `agent.interrupt` | `{}` (ignored) | `{ "ok": true }` or `{ "ok": false, "error": string }` | User tapped **Tap to speak** (frontend mic mode, below). Agent calls `session.interrupt()` (stops narration or a reply at once; the cursor keeps its place, as for a spoken barge-in) and holds the talk for `LISTEN_HOLD_S` (8 s): the resume / auto-advance timers wait that much longer unless user speech or a committed turn takes over. `ok: false` only when the session is not running. |
 
 ### Agent tools (LLM function tools, internal to backend)
 
@@ -172,6 +173,12 @@ Facts (`durationSec`, `slides`, `complianceFlags`, `questions`) come from the ag
 
 The "Try asking" chips send the question with `useSessionMessages().send` (text stream topic `lk.chat`). The agent handles it like a spoken turn: it stops the scripted narration first, then answers by voice.
 
+### Frontend-only: microphone mode
+
+A control-bar setting, stored in `localStorage` key `synthio.micMode` (`"open"` | `"tap"`, default `"open"`, access in try/catch):
+- **Open mic** — the mic is on (with a mute toggle); speak anytime and barge-in interrupts the agent.
+- **Tap to speak** — the mic is muted by default. Tapping the mic button sends `agent.interrupt` and unmutes at the same time ("Listening… tap to finish"); tapping again mutes and LiveKit's turn detection answers. The frontend also mutes when the agent starts thinking (the user's turn was committed) and after a 30 s listen window. Switching to tap mode mutes; switching to open mic unmutes.
+
 ### Point highlighting
 
 The frontend highlights the point whose index equals the agent's `slide.point` attribute (no text matching).
@@ -182,7 +189,7 @@ The frontend stores `{ deckId, slideIndex, presented, updatedAt }` per deck in `
 
 ## 6. Conversation lifecycle
 
-1. User picks a deck → `POST /api/session` → frontend connects to room with mic on.
+1. User picks a deck → `POST /api/session` → frontend connects to room with mic on (muted in tap-to-speak mode).
 2. Agent joins, reads `deckId`/`resume` from job metadata, greets (or "welcome back") and presents the start slide.
 3. **Presenting is code-driven and scripted** (approved content, verbatim): for each slide the agent speaks `intro`, then each point's `narration` in order via `session.say`, setting `slide.point` as each segment starts. No LLM call is needed to present.
 4. When a slide finishes uninterrupted, the agent waits `AUTO_ADVANCE_DELAY` (1.0 s); if the user has not started speaking it advances automatically. It never asks "any questions?" between slides (the greeting tells the user they can interrupt anytime).

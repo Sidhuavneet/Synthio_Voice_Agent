@@ -15,7 +15,13 @@ from synthio_backend.decks.models import Deck
 from synthio_backend.session.resume import ResumeState
 from tests.fakes import FakeProgress, FakeSpeech
 
-TIMING = Timing(auto_advance_s=0.01, resume_s=0.02, replay_confirm_s=0.01, turn_commit_s=0.06)
+TIMING = Timing(
+    auto_advance_s=0.01,
+    resume_s=0.02,
+    replay_confirm_s=0.01,
+    turn_commit_s=0.06,
+    listen_hold_s=0.1,
+)
 # Comfortably longer than every delay in TIMING, including the turn commit window.
 WAIT_S = 0.15
 
@@ -425,3 +431,34 @@ async def test_finished_is_published_after_the_wrap_up_plays_out(deck: Deck) -> 
     rig.speech.reply_handles[-1].finish()
     await settle()
     assert rig.progress.modes[-1] == "finished"
+
+
+async def test_interrupt_for_user_stops_narration_and_holds_the_talk(rig: Rig, deck: Deck) -> None:
+    rig.controller.start()
+    await rig.finish(1)
+    await settle()
+    assert rig.speech.playing is not None
+    await rig.controller.interrupt_for_user()
+    await settle()
+    assert rig.speech.playing is None
+    assert rig.controller.mode == "answering"
+    assert rig.controller.cursor == Cursor(0, 0)
+    # Longer than the resume delay, but the user asked to speak: the talk waits.
+    await asyncio.sleep(0.05)
+    assert rig.controller.mode == "answering"
+    # Nobody spoke within the hold: the presentation picks up where it stopped.
+    await asyncio.sleep(WAIT_S)
+    assert rig.controller.mode == "presenting"
+    assert rig.speech.said[-1] == deck.slides[0].intro
+
+
+async def test_interrupt_for_user_then_a_question_is_answered(rig: Rig) -> None:
+    rig.controller.start()
+    await rig.finish(1)
+    await rig.controller.interrupt_for_user()
+    rig.controller.on_user_speaking(True)
+    rig.controller.on_user_speaking(False)
+    rig.controller.on_user_turn()
+    rig.controller.on_agent_busy(True)
+    await asyncio.sleep(WAIT_S)
+    assert rig.controller.mode == "answering"

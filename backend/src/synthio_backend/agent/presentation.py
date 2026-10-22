@@ -41,6 +41,9 @@ MAX_ENDPOINTING_DELAY_S = 3.0
 ``endpointing.max_delay``). Timers wait this much longer after speech that has not become a
 turn yet, so the talk never restarts over a question still being committed, while noise that
 never becomes a turn still lets it carry on."""
+LISTEN_HOLD_S = 8.0
+"""How long the talk waits for the user after they asked to speak (``agent.interrupt``, the
+frontend's tap to speak) before resuming, if no speech has arrived."""
 
 NO_POINT = -1
 
@@ -83,6 +86,7 @@ class Timing:
     resume_s: float = RESUME_DELAY_S
     replay_confirm_s: float = REPLAY_CONFIRM_DELAY_S
     turn_commit_s: float = MAX_ENDPOINTING_DELAY_S
+    listen_hold_s: float = LISTEN_HOLD_S
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +200,17 @@ class PresentationController:
         self._replay_pending = index
         self._replay_offer = index
         self._spawn(self._ask_replay())
+
+    async def interrupt_for_user(self) -> None:
+        """The user asked to speak: stops the agent and holds the talk for ``listen_hold_s``.
+
+        The cursor keeps its place, as for a spoken barge-in; the hold rides on the turn
+        commit wait, so user speech or a committed turn take over from it as usual.
+        """
+        hold_until = asyncio.get_running_loop().time() + self._timing.listen_hold_s
+        self._turn_pending_until = max(self._turn_pending_until or 0.0, hold_until)
+        self._reschedule()
+        await self._speech.interrupt()
 
     def present(self, index: int) -> None:
         """Moves the cursor to ``index`` and presents it from its first segment."""

@@ -7,6 +7,7 @@ from livekit.agents import Agent, FunctionTool, ModelSettings, RunContext, ToolE
 
 from synthio_backend.agent.deck_selection import select_job
 from synthio_backend.agent.events import AgentEvent
+from synthio_backend.agent.interrupt import handle_interrupt
 from synthio_backend.agent.navigation import handle_navigate, parse_navigate_payload
 from synthio_backend.agent.presentation import PresentationController
 from synthio_backend.agent.presenter import PresenterAgent
@@ -64,6 +65,31 @@ class StoppedNavigator:
 
 async def test_handle_navigate_session_not_running() -> None:
     response = json.loads(await handle_navigate(StoppedNavigator(), _invocation('{"index": 1}')))
+    assert response == {"ok": False, "error": "AgentSession isn't running"}
+
+
+class FakeInterrupter:
+    def __init__(self, error: str | None = None) -> None:
+        self.calls = 0
+        self._error = error
+
+    async def interrupt_for_user(self) -> None:
+        self.calls += 1
+        if self._error is not None:
+            raise RuntimeError(self._error)
+
+
+@pytest.mark.parametrize("payload", ["{}", "", "garbage"])
+async def test_handle_interrupt_ok(payload: str) -> None:
+    target = FakeInterrupter()
+    response = await handle_interrupt(target, _invocation(payload))
+    assert json.loads(response) == {"ok": True}
+    assert target.calls == 1
+
+
+async def test_handle_interrupt_session_not_running() -> None:
+    target = FakeInterrupter(error="AgentSession isn't running")
+    response = json.loads(await handle_interrupt(target, _invocation("{}")))
     assert response == {"ok": False, "error": "AgentSession isn't running"}
 
 

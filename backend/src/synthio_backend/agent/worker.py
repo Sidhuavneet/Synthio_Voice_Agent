@@ -34,6 +34,7 @@ from synthio_backend.agent.events import (
     SessionErrorEvent,
     SlideChangedEvent,
 )
+from synthio_backend.agent.interrupt import handle_interrupt
 from synthio_backend.agent.navigation import handle_navigate
 from synthio_backend.agent.presentation import (
     MAX_ENDPOINTING_DELAY_S,
@@ -43,6 +44,7 @@ from synthio_backend.agent.presentation import (
 from synthio_backend.agent.presenter import PresenterAgent
 from synthio_backend.agent.protocol import (
     DECK_ID_ATTRIBUTE,
+    INTERRUPT_RPC_METHOD,
     NAVIGATE_RPC_METHOD,
     PRESENTATION_STATE_ATTRIBUTE,
     REPORT_RPC_METHOD,
@@ -273,6 +275,9 @@ async def presenter_session(ctx: JobContext) -> None:
     # Registered before start so early calls get a contract reply, not "unsupported".
     participant.register_rpc_method(
         NAVIGATE_RPC_METHOD, functools.partial(handle_navigate, presentation)
+    )
+    participant.register_rpc_method(
+        INTERRUPT_RPC_METHOD, functools.partial(handle_interrupt, presentation)
     )
     participant.register_rpc_method(REPORT_RPC_METHOD, functools.partial(handle_report, reporter))
     await session.start(
