@@ -2,9 +2,16 @@
 
 import { useMemo } from "react";
 import { useAgent } from "@livekit/components-react";
-import { parsePointIndex, parsePresented, parseSlideIndex } from "@/lib/agent-attributes";
+import {
+  parsePointIndex,
+  parsePresentationState,
+  parsePresented,
+  parseSlideIndex,
+  type PresentationState,
+} from "@/lib/agent-attributes";
 import {
   DECK_ID_ATTRIBUTE,
+  PRESENTATION_STATE_ATTRIBUTE,
   SLIDE_INDEX_ATTRIBUTE,
   SLIDE_POINT_ATTRIBUTE,
   SLIDE_PRESENTED_ATTRIBUTE,
@@ -20,6 +27,8 @@ export interface SlideSync {
   pointIndex: number | null;
   /** Slides fully presented so far (`slide.presented`), sorted. */
   presented: number[];
+  /** The presentation's mode (`presentation.state`), or null before the agent publishes it. */
+  presentationState: PresentationState | null;
 }
 
 /** Reads the presentation state from the agent participant's attributes (contract §5). */
@@ -43,5 +52,9 @@ export function useSlideSync(deck: Pick<Deck, "id" | "slides">): SlideSync {
     ? parsePointIndex(attributes[SLIDE_POINT_ATTRIBUTE], deck.slides[index].points.length)
     : null;
 
-  return { index, isSynced, pointIndex, presented };
+  const presentationState = isSynced
+    ? parsePresentationState(attributes[PRESENTATION_STATE_ATTRIBUTE])
+    : null;
+
+  return { index, isSynced, pointIndex, presented, presentationState };
 }

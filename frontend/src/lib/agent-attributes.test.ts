@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parsePointIndex, parsePresented, parseSlideIndex } from "@/lib/agent-attributes";
+import {
+  parsePointIndex,
+  parsePresentationState,
+  parsePresented,
+  parseSlideIndex,
+} from "@/lib/agent-attributes";
 
 describe("parseSlideIndex", () => {
   it("accepts in-range integers", () => {
@@ -40,5 +45,19 @@ describe("parsePresented", () => {
   it("returns an empty list when absent", () => {
     expect(parsePresented(undefined, 5)).toEqual([]);
     expect(parsePresented("", 5)).toEqual([]);
+  });
+});
+
+describe("parsePresentationState", () => {
+  it("accepts the four modes", () => {
+    for (const mode of ["presenting", "answering", "idle", "finished"]) {
+      expect(parsePresentationState(mode)).toBe(mode);
+    }
+  });
+
+  it("returns null when absent or unknown", () => {
+    expect(parsePresentationState(undefined)).toBeNull();
+    expect(parsePresentationState("")).toBeNull();
+    expect(parsePresentationState("Finished")).toBeNull();
   });
 });

@@ -5,11 +5,13 @@ import {
   RoomAudioRenderer,
   SessionProvider,
   useAgent,
+  useIsSpeaking,
   useSessionContext,
   useSessionMessages,
 } from "@livekit/components-react";
 import { ArrowLeft } from "lucide-react";
 import { SessionReportView } from "@/components/report/session-report-view";
+import { AutoReportNotice } from "@/components/session/auto-report-notice";
 import { ComplianceToast } from "@/components/session/compliance-toast";
 import { ControlBar } from "@/components/session/control-bar";
 import { InsightsCard } from "@/components/session/insights-card";
@@ -23,6 +25,7 @@ import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { useAgentEvents, type AgentEvents } from "@/hooks/use-agent-events";
 import { useAgentSession, type AgentSessionError } from "@/hooks/use-agent-session";
+import { useAutoReport } from "@/hooks/use-auto-report";
 import { useDeckProgress } from "@/hooks/use-deck-progress";
 import { useElapsedFlag } from "@/hooks/use-elapsed-flag";
 import { useNarrationMark } from "@/hooks/use-narration-mark";
@@ -30,9 +33,12 @@ import { useSessionReport } from "@/hooks/use-session-report";
 import { useSlideNavigation } from "@/hooks/use-slide-navigation";
 import { useSlideSync, type SlideSync } from "@/hooks/use-slide-sync";
 import { useSlideTimeline } from "@/hooks/use-slide-timeline";
+import { useTranscriptRows } from "@/hooks/use-transcript-rows";
 import type { Presentation } from "@/hooks/use-start-presentation";
 import { getSlideCitations } from "@/lib/deck";
+import { saveReport } from "@/lib/report-history";
 import { interruptedPoint, questionJumpTo, type SessionSpan } from "@/lib/timeline";
+import type { TranscriptRow } from "@/lib/transcript";
 import type { Deck, SessionErrorCode, SessionFacts } from "@/lib/types";
 
 const BACK_LABEL = "Back to decks";
@@ -80,13 +86,19 @@ function SessionScreen({ deck, ...props }: SessionScreenProps) {
   const getTimeline = useSlideTimeline(deck.slides, sync.index, sync.isSynced);
   const { complianceFlags } = events;
   const getFacts = useCallback(
-    (): SessionFacts => ({ deckId: deck.id, ...getTimeline(), complianceFlags }),
+    (): SessionFacts => ({
+      deckId: deck.id,
+      ...getTimeline(),
+      complianceFlags,
+    }),
     [deck.id, getTimeline, complianceFlags],
   );
   const report = useSessionReport(getFacts);
   // When the presenter first synced, and on which slide: the start of the report timeline.
   const start = useRef<{ at: number; slide: number } | null>(null);
   const [span, setSpan] = useState<SessionSpan | null>(null);
+  // The transcript as shown when the session ended, for the report.
+  const [transcript, setTranscript] = useState<TranscriptRow[]>([]);
 
   useEffect(() => {
     if (sync.isSynced && start.current === null) {
@@ -94,12 +106,35 @@ function SessionScreen({ deck, ...props }: SessionScreenProps) {
     }
   }, [sync.isSynced, sync.index]);
 
-  const endWithReport = () => {
+  const endedAt = useRef<number | null>(null);
+
+  const endWithReport = (rows: TranscriptRow[]) => {
+    const now = Date.now();
+    endedAt.current = now;
+    setTranscript(rows);
     if (start.current) {
-      setSpan({ startedAt: start.current.at, endedAt: Date.now(), startSlide: start.current.slide });
+      setSpan({
+        startedAt: start.current.at,
+        endedAt: now,
+        startSlide: start.current.slide,
+      });
     }
     void report.requestReport();
   };
+
+  // Keep each finished report (with its transcript) for the Progress panel's past sessions.
+  const saved = useRef(false);
+  useEffect(() => {
+    if (report.state.status !== "ready" || saved.current || endedAt.current === null) return;
+    saved.current = true;
+    saveReport({
+      report: report.state.report,
+      transcript,
+      deckId: deck.id,
+      deckTitle: deck.title,
+      endedAt: endedAt.current,
+    });
+  }, [report.state, transcript, deck.id, deck.title]);
 
   if (report.state.status !== "idle") {
     return (
@@ -108,6 +143,7 @@ function SessionScreen({ deck, ...props }: SessionScreenProps) {
         state={report.state}
         timeline={events.timeline}
         span={span}
+        transcript={transcript}
         onExit={props.onExit}
       />
     );
@@ -131,7 +167,8 @@ function SessionScreen({ deck, ...props }: SessionScreenProps) {
 interface SessionLayoutProps extends SessionScreenProps {
   sync: SlideSync;
   events: AgentEvents;
-  onEndWithReport: () => void;
+  /** Ends the session with the transcript as shown at that moment. */
+  onEndWithReport: (transcript: TranscriptRow[]) => void;
 }
 
 function SessionLayout({
@@ -146,6 +183,8 @@ function SessionLayout({
   const session = useSessionContext();
   const agent = useAgent();
   const { messages, send } = useSessionMessages(session);
+  const transcript = useTranscriptRows(messages, events.timeline);
+  const userSpeaking = useIsSpeaking(session.room.localParticipant);
   const { index, isSynced } = sync;
   const slide = deck.slides[index];
   const navigation = useSlideNavigation();
@@ -172,6 +211,15 @@ function SessionLayout({
       : agentSlow
         ? "waking"
         : "connecting";
+
+  const endWithReport = () => onEndWithReport(transcript);
+  // Once the talk is over and the room has gone quiet, the report opens by itself.
+  const agentBusy = agent.state === "speaking" || agent.state === "thinking";
+  const autoReport = useAutoReport(
+    presenterStatus === "live" && sync.presentationState === "finished",
+    !agentBusy && !userSpeaking,
+    endWithReport,
+  );
 
   const backAction = (
     <Button variant="secondary" size="sm" onClick={onExit}>
@@ -261,10 +309,14 @@ function SessionLayout({
 
           <div className="mt-auto space-y-3 pt-1">
             <StartAudioPrompt />
-            <ControlBar
-              onEndWithReport={onEndWithReport}
-              onMicrophoneError={onMicrophoneError}
-            />
+            {autoReport.phase === "counting" && (
+              <AutoReportNotice
+                secondsLeft={autoReport.secondsLeft}
+                onOpenNow={endWithReport}
+                onStay={autoReport.stay}
+              />
+            )}
+            <ControlBar onEndWithReport={endWithReport} onMicrophoneError={onMicrophoneError} />
             <p className="text-center text-xs text-ink-muted sm:text-left">{deck.disclaimer}</p>
           </div>
         </main>
@@ -274,8 +326,7 @@ function SessionLayout({
           <div className="flex h-[28rem] min-h-0 flex-col lg:h-auto lg:flex-1">
             <PresenterPanel
               presenter={deck.presenter}
-              messages={messages}
-              timeline={events.timeline}
+              transcript={transcript}
               slides={deck.slides}
             />
           </div>

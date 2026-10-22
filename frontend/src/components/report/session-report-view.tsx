@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   Copy,
   CircleCheck,
   CircleHelp,
@@ -12,6 +13,7 @@ import {
   ListChecks,
   Loader2,
   MessageCircleQuestion,
+  MessagesSquare,
   ShieldAlert,
   Sparkles,
   Waypoints,
@@ -20,6 +22,7 @@ import { ComplianceFlagItem } from "@/components/compliance/compliance-flag-item
 import { FollowUpList } from "@/components/report/follow-up-list";
 import { SessionTimeline } from "@/components/report/session-timeline";
 import { SlideTimeChart, slideAnchorId } from "@/components/report/slide-time-chart";
+import { TranscriptList } from "@/components/session/transcript";
 import { Alert } from "@/components/ui/alert";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
@@ -28,7 +31,9 @@ import type { TimelineEntry } from "@/hooks/use-agent-events";
 import type { ReportState } from "@/hooks/use-session-report";
 import { COMPLIANCE_CATEGORY_LABELS, formatDuration } from "@/lib/format";
 import { formatFollowUpEmail } from "@/lib/report";
+import { cn } from "@/lib/cn";
 import { buildSessionTimeline, type SessionSpan } from "@/lib/timeline";
+import { formatTranscript, type TranscriptRow } from "@/lib/transcript";
 import type { Deck, SessionFacts, SessionInsights, SessionReport } from "@/lib/types";
 
 export interface SessionReportViewProps {
@@ -38,11 +43,22 @@ export interface SessionReportViewProps {
   timeline: TimelineEntry[];
   /** Null if the presenter never synced. */
   span: SessionSpan | null;
+  /** The session transcript as shown when the session ended (empty if not captured). */
+  transcript?: TranscriptRow[];
   onExit: () => void;
 }
 
+const NO_TRANSCRIPT: TranscriptRow[] = [];
+
 /** Post-session report (contract §5 `SessionReport`), with a loading and a facts-only fallback. */
-export function SessionReportView({ deck, state, timeline, span, onExit }: SessionReportViewProps) {
+export function SessionReportView({
+  deck,
+  state,
+  timeline,
+  span,
+  transcript = NO_TRANSCRIPT,
+  onExit,
+}: SessionReportViewProps) {
   const facts: SessionFacts = state.status === "ready" ? state.report : state.facts;
   const insights: SessionInsights | null = state.status === "ready" ? state.report : null;
   const generating = state.status === "generating";
@@ -143,10 +159,12 @@ export function SessionReportView({ deck, state, timeline, span, onExit }: Sessi
           <div className="space-y-6">
             {showInsights && (
               <ReportSection icon={<Sparkles aria-hidden />} title="Summary">
-                {insights ? (
+                {!insights ? (
+                  <SkeletonLines count={3} />
+                ) : insights.summary.trim() ? (
                   <p className="leading-relaxed text-pretty text-ink-soft">{insights.summary}</p>
                 ) : (
-                  <SkeletonLines count={3} />
+                  <EmptyText>A summary couldn&apos;t be written for this session.</EmptyText>
                 )}
               </ReportSection>
             )}
@@ -232,6 +250,25 @@ export function SessionReportView({ deck, state, timeline, span, onExit }: Sessi
             )}
           </div>
         </div>
+
+        <ReportSection
+          icon={<MessagesSquare aria-hidden />}
+          title="Transcript"
+          action={
+            transcript.length > 0 && (
+              <CopyButton
+                label="Copy transcript"
+                getText={() => formatTranscript(transcript, deck.presenter.name, deck.slides)}
+              />
+            )
+          }
+        >
+          {transcript.length === 0 ? (
+            <EmptyText>Nothing was said in this session.</EmptyText>
+          ) : (
+            <CollapsibleTranscript deck={deck} rows={transcript} />
+          )}
+        </ReportSection>
       </main>
     </div>
   );
@@ -252,51 +289,145 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: s
 function ReportSection({
   icon,
   title,
+  action,
   children,
 }: {
   icon: ReactNode;
   title: string;
+  /** Shown at the end of the heading row. */
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <Card className="p-5 sm:p-6">
       <section className="space-y-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-ink [&_svg]:size-4 [&_svg]:text-accent">
-          {icon}
-          {title}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-ink [&_svg]:size-4 [&_svg]:text-accent">
+            {icon}
+            {title}
+          </h2>
+          {action}
+        </div>
         {children}
       </section>
     </Card>
   );
 }
 
-function CopyEmailButton({ deck, report }: { deck: Deck; report: SessionReport }) {
+/** Rows shown before a long transcript is expanded. */
+const COLLAPSED_TRANSCRIPT_ROWS = 8;
+
+function CollapsibleTranscript({ deck, rows }: { deck: Deck; rows: TranscriptRow[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const id = useId();
+  const long = rows.length > COLLAPSED_TRANSCRIPT_ROWS;
+  const collapsed = long && !expanded;
+  return (
+    <div className="space-y-3">
+      <div
+        id={id}
+        className={cn("relative", collapsed && "max-h-96 overflow-hidden")}
+        // Rows cut off by the collapsed view stay out of the tab order until expanded.
+        inert={collapsed}
+      >
+        <TranscriptList presenterName={deck.presenter.name} rows={rows} slides={deck.slides} />
+        {collapsed && (
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-surface to-transparent"
+          />
+        )}
+      </div>
+      {long && (
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-expanded={expanded}
+          aria-controls={id}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          <ChevronDown aria-hidden className={cn("transition-transform", expanded && "rotate-180")} />
+          {expanded ? "Show less" : `Show full transcript (${rows.length} entries)`}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function CopyButton({
+  label,
+  getText,
+  describedBy,
+}: {
+  label: string;
+  getText: () => string;
+  describedBy?: string;
+}) {
   const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
   const copy = async () => {
-    const text = formatFollowUpEmail(
-      deck,
-      report,
-      (flag) => COMPLIANCE_CATEGORY_LABELS[flag.category],
-    );
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(getText());
       setStatus("copied");
     } catch {
       setStatus("failed");
     }
   };
   return (
-    <Button variant="secondary" size="sm" onClick={() => void copy()}>
+    <Button
+      variant="secondary"
+      size="sm"
+      aria-describedby={describedBy}
+      onClick={() => void copy()}
+    >
       {status === "copied" ? <Check aria-hidden /> : <Copy aria-hidden />}
       <span aria-live="polite">
-        {status === "copied"
-          ? "Copied"
-          : status === "failed"
-            ? "Copy blocked by browser"
-            : "Copy follow-up email"}
+        {status === "copied" ? "Copied" : status === "failed" ? "Copy blocked by browser" : label}
       </span>
     </Button>
+  );
+}
+
+/** Copies the follow-up email; hovering or focusing the button previews exactly that text. */
+function CopyEmailButton({ deck, report }: { deck: Deck; report: SessionReport }) {
+  const text = useMemo(
+    () => formatFollowUpEmail(deck, report, (flag) => COMPLIANCE_CATEGORY_LABELS[flag.category]),
+    [deck, report],
+  );
+  const previewId = useId();
+  // Esc hides the preview until the pointer or focus leaves (WCAG 1.4.13).
+  const [dismissed, setDismissed] = useState(false);
+  return (
+    <div
+      className="group relative"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setDismissed(true);
+      }}
+      onMouseLeave={() => setDismissed(false)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setDismissed(false);
+      }}
+    >
+      <CopyButton label="Copy follow-up email" getText={() => text} describedBy={previewId} />
+      {/* Padding, not margin, bridges the gap so moving the pointer onto the preview keeps it. */}
+      <div
+        id={previewId}
+        role="tooltip"
+        className={cn(
+          "invisible absolute top-full right-0 z-20 w-[min(32rem,calc(100vw-2rem))] pt-2 opacity-0 transition-opacity",
+          !dismissed &&
+            "group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100",
+        )}
+      >
+        <div className="rounded-xl border border-line bg-surface shadow-stage">
+          <p className="border-b border-line px-4 py-2 text-xs font-medium text-ink-muted">
+            Email preview
+          </p>
+          <pre className="max-h-80 overflow-y-auto px-4 py-3 font-sans text-xs leading-relaxed whitespace-pre-wrap text-ink-soft">
+            {text}
+          </pre>
+        </div>
+      </div>
+    </div>
   );
 }
 

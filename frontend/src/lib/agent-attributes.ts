@@ -1,5 +1,14 @@
 /** Parsers for the agent participant's attributes (contract §5). Malformed values are ignored. */
 
+export type PresentationState = "presenting" | "answering" | "idle" | "finished";
+
+const PRESENTATION_STATES: ReadonlySet<string> = new Set<PresentationState>([
+  "presenting",
+  "answering",
+  "idle",
+  "finished",
+]);
+
 function parseIndex(raw: string | undefined, count: number): number | null {
   if (raw === undefined || raw.trim() === "") return null;
   const value = Number(raw);
@@ -24,4 +33,9 @@ export function parsePresented(raw: string | undefined, slideCount: number): num
     .map((part) => parseIndex(part, slideCount))
     .filter((index): index is number => index !== null);
   return [...new Set(indices)].sort((a, b) => a - b);
+}
+
+/** `presentation.state` -> the presentation's mode, or null when absent or unknown. */
+export function parsePresentationState(raw: string | undefined): PresentationState | null {
+  return raw !== undefined && PRESENTATION_STATES.has(raw) ? (raw as PresentationState) : null;
 }

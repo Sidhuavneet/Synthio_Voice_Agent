@@ -1,10 +1,10 @@
 "use client";
 
-import { BarVisualizer, useAgent, type ReceivedMessage } from "@livekit/components-react";
+import { BarVisualizer, useAgent } from "@livekit/components-react";
 import { AgentStatus } from "@/components/session/agent-status";
 import { Transcript } from "@/components/session/transcript";
 import { Card } from "@/components/ui/card";
-import type { TimelineEntry } from "@/hooks/use-agent-events";
+import type { TranscriptRow } from "@/lib/transcript";
 import type { Presenter, Slide } from "@/lib/types";
 
 function initials(name: string): string {
@@ -19,12 +19,12 @@ function initials(name: string): string {
 
 export interface PresenterPanelProps {
   presenter: Presenter;
-  messages: ReceivedMessage[];
-  timeline: TimelineEntry[];
+  /** The session transcript (messages and timeline markers). */
+  transcript: TranscriptRow[];
   slides: Slide[];
 }
 
-export function PresenterPanel({ presenter, messages, timeline, slides }: PresenterPanelProps) {
+export function PresenterPanel({ presenter, transcript, slides }: PresenterPanelProps) {
   const agent = useAgent();
 
   return (
@@ -55,12 +55,7 @@ export function PresenterPanel({ presenter, messages, timeline, slides }: Presen
           />
         </div>
       </div>
-      <Transcript
-        presenterName={presenter.name}
-        messages={messages}
-        timeline={timeline}
-        slides={slides}
-      />
+      <Transcript presenterName={presenter.name} rows={transcript} slides={slides} />
     </Card>
   );
 }

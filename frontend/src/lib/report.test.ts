@@ -50,6 +50,35 @@ describe("parseSessionReportResponse follow-ups", () => {
   });
 });
 
+describe("parseSessionReportResponse questions", () => {
+  it("keeps every question of a facts-only report (no LLM summary)", () => {
+    // Wire shape of the agent's facts-only report (contract §5).
+    const raw = JSON.stringify({
+      ok: true,
+      deckId: "acl-football",
+      durationSec: 95,
+      summary: "",
+      slides: [
+        { index: 0, title: "Why ACL injuries matter", timeSec: 40 },
+        { index: 1, title: "How the ACL tears", timeSec: 55 },
+      ],
+      questions: [
+        { question: "How long does recovery take?", slideIndex: 1, answered: true },
+        { question: "What about turf?", slideIndex: 0, answered: true },
+      ],
+      complianceFlags: [],
+      followUps: [],
+      interests: [],
+    });
+    const parsed = parseSessionReportResponse(raw);
+    expect(parsed.ok && parsed.summary).toBe("");
+    expect(parsed.ok && parsed.questions).toEqual([
+      { question: "How long does recovery take?", slideIndex: 1, answered: true },
+      { question: "What about turf?", slideIndex: 0, answered: true },
+    ]);
+  });
+});
+
 describe("formatFollowUpEmail", () => {
   it("lists actions with missing criteria, open questions and flags", () => {
     const email = formatFollowUpEmail(

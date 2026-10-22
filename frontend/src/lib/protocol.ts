@@ -6,6 +6,8 @@ export const DECK_ID_ATTRIBUTE = "deck.id";
 export const SLIDE_POINT_ATTRIBUTE = "slide.point";
 /** Comma-separated indices of fully presented slides, e.g. "0,1,2". */
 export const SLIDE_PRESENTED_ATTRIBUTE = "slide.presented";
+/** `presenting` | `answering` | `idle` | `finished` (deck done, wrap-up played out). */
+export const PRESENTATION_STATE_ATTRIBUTE = "presentation.state";
 export const NAVIGATE_RPC_METHOD = "slides.navigate";
 export const EVENTS_TOPIC = "synthio.events";
 export const REPORT_RPC_METHOD = "session.report";
